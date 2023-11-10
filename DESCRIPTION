@@ -1,0 +1,12 @@
+Package: RNASeqHelper
+Title: Generate Heatmaps and Volcano Plots for your DESeq2 Contract of Interest
+Version: 0.0.0.9000
+Authors@R: 
+    person("Mehmet", "Tekman", , "mtekman89@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-4181-2676"))
+Description: Perform a full DESeq2 analysis for your RNA-seq data, generating
+             colourful Volcano and Kmeans-clustered Heatmaps.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
