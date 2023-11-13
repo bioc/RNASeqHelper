@@ -1,19 +1,19 @@
 ## Mehmet Tekman, 2023
 
-#' @importFrom tidyverse group_by arrange summarise mutate select write_tsv read_tsv summarize n_distinct
+#' @importFrom tidyverse group_by arrange summarise mutate select write_tsv read_tsv summarize n_distinct left_join case_when
 #' @importFrom ggplot2 ggplot facet_wrap stat_summary ylab xlab scale_x_continuous ggtitle ggsave theme theme_bw
 #' @importFrom patchwork wrap_plots
 #' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq plotPCA vst
+#' @importFrom pheatmap pheatmap
 
 library(tidyverse)
 library(RColorBrewer)
 library(patchwork)
-library(patchwork)
 
 gois_list <- list(
   bra.down = c("Msgn1", "Osr1", "Rspo3", "Fgf8", "Wnt3a"),
-  eo.down.repr = c("Dmdx1", "Dpf3", "Foxa1", "Hey1", "Hhex", "Tcf7l2", "Tle2"),
   eo.down = c("Mesp1", "Foxa2", "Sox17", "Lhx1", "Cer1"),
+  eo.down.repr = c("Dmdx1", "Dpf3", "Foxa1", "Hey1", "Hhex", "Tcf7l2", "Tle2"),
   pp.up = c("Lefty1", "Lefty2", "Nodal", "Wnt8a", "Fgf5", "Otx2", "Cldn6"),
   episc.up = c("Nanog", "Pou5f1", "Sox2", "L1td1", "Utf1"),
   ne.up = c("Sox1", "Sox3", "Olig3", "Gbx2", "Pou3f1", "Msx3", "Slc7a3",
@@ -129,292 +129,202 @@ cluster_gene_plots <- function(tab, score_thresh = 0, out.dir = "gene_cluster") 
 #'     data.frame(cluster = c(1, 1, 2, 3, 2))
 #' )
 num_clusters <- function(tab) {
-    return(length(unique(tab$cluster)))
+  return(length(unique(tab$cluster)))
 }
 
 #' @title Gene clusters by score
-#' @description Generate cluster gene plots for various score thresholds
+#' @description Generate cluster gene plots for various score
+#'   thresholds
 #' @param tab Dataframe containing TODO
-#' @param score_list Vector of numerics depicting cluster score
+#' @param score_thresh Vector of numerics depicting cluster score
 #'   thresholds to filter for high quality genes in each cluster
 #'   before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
 #' @param out_dir String representing the directory to store gene
 #'   plots. Default value is "gene_cluster"
+#' @return A single patchwork plot containing cluster gene plots for
+#'   different score thresholds. This plot is also saved to the
+#'   `out_dir' directory under the pattern "gene_plots-k*_montage.svg"
 gene_clusters_by_score <- function(tab,
-                                   score_list = c(0, 0.5, 0.9, 0.99),
+                                   score_thresh = c(0, 0.5, 0.9, 0.99),
                                    out_dir = "gene_cluster") {
-  if (!dir.exists(out_dir)) {
-    dir.create(out_dir)
-  }
+    if (!dir.exists(out_dir)) {
+        dir.create(out_dir)
+    }
 
-  res = lapply(score_list, function(x) {
-    return(cluster_gene_plots(tab, score_thresh=x, out_dir=out_dir))
-  })
+    res <- lapply(score_thresh, function(x) {
+        return(cluster_gene_plots(tab, score_thresh = x, out_dir = out_dir))
+    })
 
-  newoutprefix = file.path(out_dir, 
-                           paste0("gene_plots-k", num_clusters(tab)))
+    newoutprefix <- file.path(
+        out_dir,
+        paste0("gene_plots-k", num_clusters(tab))
+    )
 
-  rplot = wrap_plots(res, ncol=2, guides = "collect") & 
-    theme(plot.title = element_blank(), axis.title = element_blank())
-  ggplot2::ggsave(plot=rplot, filename=paste0(newoutprefix, "_montage.svg"),
-                  dpi=800, width = 15, height = 15, unit = "in")
+    rplot <- wrap_plots(res, ncol = 2, guides = "collect") &
+        theme(plot.title = element_blank(), axis.title = element_blank())
 
-  return(rplot)
-} 
+    ggplot2::ggsave(
+        plot = rplot, filename = paste0(newoutprefix, "_montage.svg"),
+        dpi = 800, width = 15, height = 15, unit = "in"
+    )
 
+    return(rplot)
+}
+
+
+#' @title Get a high quality genes list
+#' @description Filter a wide-format matrix for high quality genes
+#'   (rows) based on detectability thresholds and smallest occurrence.
+#' @param sam_mat A numeric matrix. Genes are rows and Samples as
+#'   columns. Typically this is the average sample matrix, with
+#'   replicate values summarized into mean expression.
+#' @param min_occur A positive integer. A threshold (greater than or
+#'   equal to) the number of times a gene is detected in a sample,
+#'   across all samples (e.g. Gene X is only kept if it appears in 10
+#'   samples with a value greater than the `min_detect' threshold.
+#'   Default value is 3.
+#' @param min_detect A positive integer. A threshold (greater than or
+#'   equal to) for the minimum expression a gene can have for it to be
+#'   a valid occurrence in a sample. Default values is 10.
+#' @return A vector of strings depicting a list of high quality genes.
+#'   A table of rowSums is written to a file matching
+#'   "smallestGroup*-detected*-keep_genes".
 high_quality_genes <- function(sam_mat,
-                               smallest_group_n = 3,
-                               detectability = 10) {
-  ## Generate a list of high quality genes from
-  ## an average sample wide-format matrix
-
-  res <- rowSums(sam_mat >= detectability) >= smallest_group_n
-  keep_genes <- res[res == TRUE]
-  drop_genes <- res[res == FALSE]
-  write_tsv(as.data.frame(res), 
-            paste0("smallestGroup",
-                   smallest_group_n, "-detected",
-                   detectability, "_keep_genes"))
-  message(paste0("Dropped: ", length(drop_genes),
-                 " genes (",
-                 as.integer(100 * length(drop_genes)/ length(res)), "%)"))
-  return(keep_genes)
+                               min_occur = 3,
+                               min_detect = 10) {
+    res <- rowSums(sam_mat >= min_detect) >= min_occur
+    keep_genes <- res[res == TRUE]
+    drop_genes <- res[res == FALSE]
+    write_tsv(
+        as.data.frame(res),
+        paste0(
+            "smallestGroup",
+            min_occur, "-detected",
+            min_detect, "-keep_genes"
+        )
+    )
+    message(paste0(
+        "Dropped: ", length(drop_genes),
+        " genes (",
+        as.integer(100 * length(drop_genes) / length(res)), "%)"
+    ))
+    return(keep_genes)
 }
 
-gene_plots_by_gene <- function(norm_long, scale.long, gois_list, 
-                               outprefix="gene.lists", out_dir="gene_lists") {
-  ## For a norm. long matrix and a scaled long matrix, use column pattern of:
-  ## - gene	condition	time	replicate	value
-  ## As well as a list of genes in the pattern on:
-  ## - list(mygeneset1 = c("Eomes", "T"),
-  ##        mygeneset2 = c("Lefty2", etc, etc.)
-
-  if (!dir.exists(out_dir)) {
-    dir.create(out_dir)
-  }
-
-  plot_dims <- function(n) {
-    ## Calculates plot and width height for a given N plots
-    w <- ceiling(sqrt(n))
-    h <- ceiling(n / w)
-    return(list(w = w,h = h))
-  }
-
-  time_breaks <- sort(unique(sort(norm_long$time)))
-
-  pgene_list <- lapply(names(gois_list), function(glist_name) {
-    glist <- gois_list[[glist_name]]
-    genes_found <- unique((norm_long %>% filter(gene %in% glist))$gene)
-
-    if (length(genes_found) < 1) {
-      message("no genes found for: ", glist_name)
-      return(NULL)
+#' @title Gene plots by gene
+#' @description Generate plots for genes of interest showing their
+#'   normalized and z-score scaled expression.
+#' @param norm_long A long dataframe of normalized values. Must
+#'   contain columns of: gene, condition, time, replicate, value.
+#' @param scale_long A long dataframe of scaled values. Same format as
+#'   `norm_long'.
+#' @param gois_list A list of vectors. A list of genes which are
+#'   referenced by specific names. Unique plots will be generated for
+#'   list. e.g.
+#'       list(mygeneset1 = c("Msgn1", "Osr1", "Rspo3", "Fgf8", "Wnt3a"),
+#'            mygeneset2 = c("Mesp1", "Foxa2", "Sox17", "Lhx1", "Cer1"))
+#' @param outprefix A string depicting the output prefix for the
+#'   plots. These will be appended with the title of each gene list
+#'   and for the normalized and scaled.
+#' @param out_dir A string denoting the output directory to store
+#'   plots. Default is is "gene_lists".
+gene_plots_by_gene <- function(norm_long, scale_long, gois_list,
+                               outprefix = "gene.lists",
+                               out_dir = "gene_lists") {
+    if (!dir.exists(out_dir)) {
+        dir.create(out_dir)
     }
 
-    pgene_norm <- norm_long %>% filter(gene %in% genes_found) %>%
-      ggplot(aes(x = time, y = value, 
-                 fill = condition, colour = condition, group = condition)) +
-      stat_summary(fun.data = 'mean_sdl', geom = 'ribbon',
-                   alpha = 0.1, colour = NA) +
-      stat_summary(fun = mean, geom = 'line') +
-      geom_jitter(width=0.1) +
-      scale_y_log10() +
-      facet_wrap("gene", scales="free_y") +
-      ylab("Log10 Normalised Expression") +
-      ggtitle(paste0("Normalised Expression Time Plots "
-                     "grouped by Genes of Interest"))+
-      scale_x_continuous(breaks=time_breaks) +
-      theme_bw()
-
-    pdims <- plot_dims(length(genes_found))
-    ggsave(plot=pgene_norm,
-           filename=file.path(out_dir,
-                              paste0(outprefix, ".",
-                                     glist_name, ".normalised.svg")),
-           dpi=800, width = pdims$w * 2, height = pdims$h * 1.5, unit = "in")
-
-    pgene_scale <- scale.long %>% filter(gene %in% genes_found) %>%
-      ggplot(aes(x=time, y=value, 
-                 fill=condition, colour=condition, group=condition)) +
-      stat_summary(fun.data = 'mean_sdl', geom = 'ribbon',
-                   alpha=0.1, colour=NA) +
-      stat_summary(fun = mean, geom = 'line') +
-      geom_jitter(width=0.1) +
-      facet_wrap("gene", scales="free_y") +
-      ylab("Scaled Expression") +
-      ggtitle("Scaled Expression Time Plots, grouped by Genes of Interest") +
-      scale_x_continuous(breaks=time_breaks) +
-      theme_bw()
-
-    ggsave(plot=pgene_scale,
-           filename=file.path(out_dir, paste0(outprefix, ".",
-                                              glist_name, ".scaled.svg")),
-           dpi=800, width = pdims$w * 2, height = pdims$h * 1.5, unit = "in")
-
-    return(list(norm = pgene_norm, scale = pgene_scale))
-  })
-}
-
-## We try Josephus's clustering
-do_kmeans <- function(data, k, plot_list, out_dir="heatmaps_k", 
-                      highlight_genes=NULL, ...) {
-  ## Perform KMeans clustering
-  ## data:  a normalised (not-scaled) wide-format matrix.
-  ## k: number of partitions
-  ## plot_list: a list of column names for specifying the order of columns
-  condition_list <- plot_list[[1]]
-
-  out_dir <- paste0(out_dir, k)
-
-  if (!dir.exists(out_dir)) {
-    dir.create(out_dir)
-  }
-
-  output_svg_prefix <- file.path(out_dir, paste0("genes.k", k, "."))
-
-  scaledata <- t(scale(t(data)))
-  scaledata <- scaledata[complete.cases(scaledata), ] ## Remove non-zero
-
-  k_clust <- kmeans(scaledata, centers = k, nstart = 1000, iter.max = 30)
-  k_clusters <- k_clust$cluster
-
-  clust_centroid <- function(i, dat, clusters) {
-    ##message("-[    clust_centroid ]-")
-    ind = (clusters == i)
-    colMeans(dat[ind, ])
-  }
-  k_clustcentroids <- sapply(levels(factor(k_clusters)),
-                             clust_centroid, scaledata, k_clusters) ## is a matrix
-
-  kmolten <- as.data.frame(as.table(k_clustcentroids))
-  colnames(kmolten) <- c("sample", "cluster", "value")
-  ## ensure correct factorizing
-  kmolten$sample <- factor(kmolten$sample)
-
-  clusters_unique <- sort(unique(kmolten$cluster))
-  cores <- list()
-  kmolten_list <- list()
-  scores <- list()
-  corescores <- list()
-
-  for (i in clusters_unique) {
-    core_i <- kmolten[kmolten$cluster == i, ]
-    core_i$sample <- factor(core_i$sample, levels = condition_list)
-    k_i <- scaledata[k_clusters == i, ]
-    corescore_i <- function(x) cor(x, core_i$value)
-    score_i <- apply(k_i, 1, corescore_i)
-    k_i_molten <- as.data.frame(as.table(k_i))
-    colnames(k_i_molten) <- c("gene", "sample", "value")
-    k_i_molten <- merge(k_i_molten, score_i, by.x = "gene",
-                        by.y = "row.names", all.x = T)
-    colnames(k_i_molten) <- c('gene', 'sample', 'value', 'score')
-    k_i_molten <- k_i_molten[order(k_i_molten$value), ]
-    kmolten_list[[i]] <- k_i_molten
-    scores[[i]] <- score_i
-    corescores[[i]] <- corescore_i
-    cores[[i]] <- core_i
-  }
-  ## name collected values
-  names(kmolten_list) <- paste("K", 1:k, "molten", sep = '')
-  names(cores) <- paste("core", 1:k, sep = '')
-  names(scores) <- paste("score", 1:k, sep = '')
-
-  scaledata.k <-cbind(scaledata,
-                      cluster = k_clust$cluster,
-                      score = Reduce(`c`, scores)[rownames(scaledata)])
-  scaledata.k <- scaledata.k[order(scaledata.k[, "cluster"], scaledata.k[, "score"]), ]
-
-  select_df <- function(df, val, col.selector) {
-    df[ df[, col.selector] == val, ]
-  }
-  df2dflist <- function(df, col.selector) { # actually it is split()
-    message("-[df2dflist]-")
-    col.vals <- unique(df[, col.selector])
-    dfl <- lapply(seq(col.vals),
-                  function(i) select_df(df,
-                                        val = col.vals[i],
-                                        col.selector))
-    names(dfl) <- col.vals
-    dfl
-  }
-  scaledata_list <- df2dflist(scaledata.k, "cluster")
-  names(scaledata_list) <- paste("cluster", 1:k, sep = "")
-
-  gaps.idxs <- cumsum(table(scaledata.k[, "cluster"])) # scaledata.k is one matrix! only column 'cluster'
-
-  show.genes = rownames(scaledata)
-  if (!is.null(highlight_genes)) {
-    ## Blank out any non-listed genes
-    show.genes[!(show.genes %in% highlight_genes)] = ""
-  }
-  
-  single_heatmap <- function(ordered_cols, outfix="") {
-
-    main=paste0(nrow(scaledata), " genes, clustered into k=", 
-                k, " ordered by ", outfix)
-    
-    colors.kr <- colorRampPalette(c("black", "#bb0000"))(100)
-    ##colors.kr <- brewer.pal(10,"PuOr")
-    svg(tempfile(fileext = ".svg"))
-    ph <- pheatmap::pheatmap(
-                      scaledata.k[, ordered_cols],
-                      cluster_rows = F,
-                      cluster_cols = F,
-                      show_rownames = T,
-                      labels_row=show.genes,
-                      cellwidth = 40,
-                      col = colors.kr,
-                      fontsize_row = 8,
-                      border_color = NA,
-                      gaps_row = gaps.idxs,          # gap after each block
-                      main = main,
-                      ...
-                    )
-    dev.off()
-    
-    svg(paste0(output_svg_prefix, outfix, ".svg"))
-    graphics::plot.new()
-    ##print(ph)
-    print(better_pheatmap(ph))
-    dev.off()
-  }
-
-  for (name in names(plot_list)) {
-    message("-[single_heatmap]- ", name)
-    single_heatmap(plot_list[[name]], name)
-  }
-  return(scaledata.k)
-}
-
-get_filld <- function(rh) {
-  getatts = function (x) attributes(x)$names
-
-  ## If it has fill and dimension, we modify it 
-  if ("gp" %in% getatts(rh)) {
-    if ("fill" %in% getatts(rh$gp)) {
-      hasdim = dim(rh$gp$fill)
-      if (!is.null(hasdim))
-      {
-        message("Changed: ", rh, " ", hasdim)
-        rh$gp$col <- rh$gp$fill
-        rh$gp$lwd <- 3
-      }
+    plot_dims <- function(n) {
+        ## Calculates plot and width height for a given N plots
+        w <- ceiling(sqrt(n))
+        h <- ceiling(n / w)
+        return(list(w = w, h = h))
     }
-  }
 
-  if ("children" %in% getatts(rh)) {
-    for (child in names(rh$children)) {
-      rh$children[[child]] = get_filld(rh$children[[child]])
-    }
-  }
+    time_breaks <- sort(unique(sort(norm_long$time)))
+
+    pgene_list <- lapply(names(gois_list), function(glist_name) {
+        glist <- gois_list[[glist_name]]
+        genes_found <- unique((norm_long %>% filter(gene %in% glist))$gene)
+
+        if (length(genes_found) < 1) {
+            message("no genes found for: ", glist_name)
+            return(NULL)
+        }
+
+        pgene_norm <- norm_long %>%
+            filter(gene %in% genes_found) %>%
+            ggplot(aes(
+                x = time, y = value,
+                fill = condition, colour = condition, group = condition
+            )) +
+            stat_summary(
+                fun.data = "mean_sdl", geom = "ribbon",
+                alpha = 0.1, colour = NA
+            ) +
+            stat_summary(fun = mean, geom = "line") +
+            geom_jitter(width = 0.1) +
+            scale_y_log10() +
+            facet_wrap("gene", scales = "free_y") +
+            ylab("Log10 Normalised Expression") +
+            ggtitle(paste0(
+                "Normalised Expression Time Plots ",
+                "grouped by Genes of Interest"
+            )) +
+            scale_x_continuous(breaks = time_breaks) +
+            theme_bw()
+
+        pdims <- plot_dims(length(genes_found))
+        ggsave(
+            plot = pgene_norm,
+            filename = file.path(
+                out_dir,
+                paste0(
+                    outprefix, ".",
+                    glist_name, ".normalised.svg"
+                )
+            ),
+            dpi = 800, width = pdims$w * 2, height = pdims$h * 1.5, unit = "in"
+        )
+
+        pgene_scale <- scale_long %>%
+            filter(gene %in% genes_found) %>%
+            ggplot(aes(
+                x = time, y = value,
+                fill = condition, colour = condition, group = condition
+            )) +
+            stat_summary(
+                fun.data = "mean_sdl", geom = "ribbon",
+                alpha = 0.1, colour = NA
+            ) +
+            stat_summary(fun = mean, geom = "line") +
+            geom_jitter(width = 0.1) +
+            facet_wrap("gene", scales = "free_y") +
+            ylab("Scaled Expression") +
+            ggtitle("Scaled Expression Time Plots, grouped by Genes of Interest") +
+            scale_x_continuous(breaks = time_breaks) +
+            theme_bw()
+
+        ggsave(
+            plot = pgene_scale,
+            filename = file.path(out_dir, paste0(
+                outprefix, ".",
+                glist_name, ".scaled.svg"
+            )),
+            dpi = 800, width = pdims$w * 2, height = pdims$h * 1.5, unit = "in"
+        )
+
+        return(list(norm = pgene_norm, scale = pgene_scale))
+    })
 }
 
 
-better_heatmap <- function(ph) {
+better_pheatmap <- function(ph) {
   lwdd <- 2
   message("-[better_pheatmap]-")
   ## taken from
-  #https://stackoverflow.com/questions/44318690/no-border-color-in-pheatmap-in-r
+  ##https://stackoverflow.com/questions/44318690/no-border-color-in-pheatmap-in-r
 
   if (class(ph) == "Heatmap") {
     ## ComplexHeatmap
@@ -429,7 +339,7 @@ better_heatmap <- function(ph) {
         ##rects = names(ph$children[[hm]]$children)
         for (rr in rects) {
           ## Check for rects with tabular data
-          hasdim = dim(ph$children[[hm]]$children[[rr]]$gp$fill)
+          hasdim <- dim(ph$children[[hm]]$children[[rr]]$gp$fill)
           if (!is.null(hasdim))
           {
             message("--Here5")
@@ -438,9 +348,7 @@ better_heatmap <- function(ph) {
             ph$children[[hm]]$children[[rr]]$gp$lwd <- lwdd
           }
         }
-      }
-      else 
-      {
+      } else {
         if ("gp" %in% names(ph$children[[hm]])) {
           ## Check for rects with tabular data
           hasdim <- dim(ph$children[[hm]]$gp$fill)
@@ -466,13 +374,204 @@ better_heatmap <- function(ph) {
     ## Remove borders around cells
     ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$col <-
       ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$fill
-    ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$lwd <- 3    
+    ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$lwd <- 3
     return(ph)
   }
 }
 
 
-runDESeq <- function(tab, phenotype_data, min_detect=50, min_samples=8) {
+single_heatmap <- function(scaledata, ordered_cols, gaps_idxs,
+                           output_svg_prefix,
+                           outfix = "") {
+  main <- paste0(nrow(scaledata), " genes, clustered into k=", 
+                 k, " ordered by ", outfix)
+  colors_kr <- colorRampPalette(c("black", "#bb0000"))(100)
+  svg(tempfile(fileext = ".svg"))
+  ph <- pheatmap::pheatmap(
+                    scaledata_k[, ordered_cols],
+                    cluster_rows = FALSE,
+                    cluster_cols = FALSE,
+                    show_rownames = TRUE,
+                    labels_row = show_genes,
+                    cellwidth = 40,
+                    col = colors_kr,
+                    fontsize_row = 8,
+                    border_color = NA,
+                    gaps_row = gaps_idxs,          # gap after each block
+                    main = main,
+                    ...
+                  )
+  dev.off()
+
+  svg(paste0(output_svg_prefix, outfix, ".svg"))
+  graphics::plot.new()
+  ##print(ph)
+  print(better_pheatmap(ph))
+  dev.off()
+}
+
+
+
+run_kmolten_perclust <- function(scaledata, kmolten,
+                                 k_clusters,
+                                 condition_list) {
+  clusters_unique <- sort(unique(kmolten$cluster))
+  cores <- list()
+  kmolten_list <- list()
+  scores <- list()
+  ##corescores <- list()
+
+  for (i in clusters_unique) {
+    core_i <- kmolten[kmolten$cluster == i, ]
+    core_i$sample <- factor(core_i$sample, levels = condition_list)
+    k_i <- scaledata[k_clusters == i, ]
+    corescore_i <- function(x) cor(x, core_i$value)
+    score_i <- apply(k_i, 1, corescore_i)
+    k_i_molten <- as.data.frame(as.table(k_i))
+    colnames(k_i_molten) <- c("gene", "sample", "value")
+    k_i_molten <- merge(k_i_molten, score_i, by.x = "gene",
+                        by.y = "row.names", all.x = T)
+    colnames(k_i_molten) <- c('gene', 'sample', 'value', 'score')
+    k_i_molten <- k_i_molten[order(k_i_molten$value), ]
+    kmolten_list[[i]] <- k_i_molten
+    scores[[i]] <- score_i
+    ##corescores[[i]] <- corescore_i
+    cores[[i]] <- core_i
+  }
+  ## name collected values
+  names(kmolten_list) <- paste("K", 1:k, "molten", sep = '')
+  names(cores) <- paste("core", 1:k, sep = '')
+  names(scores) <- paste("score", 1:k, sep = '')
+
+  return(list(scores = scores, cores = cores, kmolten_list = kmolten_list))
+}
+
+
+
+#' @title Produce a K-means clustered Heatmap
+#' @description Generates a k-means clustered heatmap of z-score
+#'   scaled gene expression values, preserving the sample order.
+#' @param data A numeric matrix. Must be normalised but not already
+#'   scaled.
+#' @param k A positive integer. The number of desired partitions of
+#'   the data.
+#' @param plot_list A named list of vectors. Each name refers to a
+#'   preferred subset/ordering of the samples in the numeric `data
+#'   matrix. e.g. list(order1 = c("Sample1A",
+#'   "Sample1B, "Sample2A", ...), order2 = c("Sample1A", "Sample2A", Sample1B",
+#'   ...))
+#' @param out_dir A string depicting the output directory of the
+#'   heatmap. Default is "heatmaps_k".
+#' @param highlight_genes A vector of genes to highlight in the output
+#'   plots. Default is NULL, highlighting none.
+#' @param ... All other arguments are fed into `pheatmap::pheatmap'
+#' @return A list of numeric matrices, partitioned by K value
+#'   contained z-score scaled genes values.
+do_kmeans <- function(data, k, plot_list, out_dir = "heatmaps_k",
+                      highlight_genes = NULL, ...) {
+  out_dir <- paste0(out_dir, k)
+
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
+
+  output_svg_prefix <- file.path(out_dir, paste0("genes.k", k, "."))
+
+  scaledata <- t(scale(t(data)))
+  scaledata <- scaledata[complete.cases(scaledata), ] ## Remove non-zero
+
+  k_clust <- kmeans(scaledata, centers = k, nstart = 1000, iter.max = 30)
+  k_clusters <- k_clust$cluster
+
+  clust_centroid <- function(i, dat, clusters) {
+    ind <- (clusters == i)
+    colMeans(dat[ind, ])
+  }
+  ## is a matrix
+  k_clustcentroids <- sapply(levels(factor(k_clusters)),
+                             clust_centroid, scaledata, k_clusters)
+
+  kmolten <- as.data.frame(as.table(k_clustcentroids))
+  colnames(kmolten) <- c("sample", "cluster", "value")
+  ## ensure correct factorizing
+  kmolten$sample <- factor(kmolten$sample)
+
+  res_rkmopcl <- run_kmolten_perclust(scaledata, kmolten, k_clusters,
+                                      plot_list[[1]])
+  scores <- res_rkmopcl$scores
+  cores <- res_rkmopcl$cores
+  kmolten_list <- res_rkmopcl$kmolten_list
+
+  scaledata_k <-cbind(scaledata,
+                      cluster = k_clust$cluster,
+                      score = Reduce(`c`, scores)[rownames(scaledata)])
+  scaledata_k <- scaledata_k[order(scaledata_k[, "cluster"],
+                                   scaledata_k[, "score"]), ]
+
+  select_df <- function(df, val, col_selector) {
+    df[df[, col_selector] == val, ]
+  }
+  df2dflist <- function(df, col_selector) { # actually it is split()
+    message("-[df2dflist]-")
+    col_vals <- unique(df[, col_selector])
+    dfl <- lapply(seq(col_vals), function(i) {
+        select_df(df,
+            val = col_vals[i],
+            col_selector
+            )
+    })
+    names(dfl) <- col_vals
+    dfl
+  }
+  scaledata_list <- df2dflist(scaledata_k, "cluster")
+  names(scaledata_list) <- paste("cluster", 1:k, sep = "")
+
+  ## scaledata_k is one matrix! only column 'cluster'
+  gaps_idxs <- cumsum(table(scaledata_k[, "cluster"])) 
+  show_genes <- rownames(scaledata)
+  if (!is.null(highlight_genes)) {
+    ## Blank out any non-listed genes
+    show_genes[!(show_genes %in% highlight_genes)] <- ""
+  }
+  for (name in names(plot_list)) {
+    message("-[single_heatmap]- ", name)
+    single_heatmap(scaledata, plot_list[[name]], gaps_idxs,
+                   output_svg_prefix, name)
+  }
+  return(scaledata_k)
+}
+
+
+#' @title Set colours to fill values in plots
+#' @description An experimental function to remove the horrible gray
+#'   lines produced in some SVG/PDF renderers due to the colours of
+#'   rectangles having no assigned color or size.
+#' @param rh A ggplot grob-like object.
+#' @return None. It modifies the object in place.
+get_filld <- function(rh) {
+  getatts <- function(x) attributes(x)$names
+
+  ## If it has fill and dimension, we modify it
+  if ("gp" %in% getatts(rh)) {
+    if ("fill" %in% getatts(rh$gp)) {
+      hasdim = dim(rh$gp$fill)
+      if (!is.null(hasdim)) {
+        message("Changed: ", rh, " ", hasdim)
+        rh$gp$col <- rh$gp$fill
+        rh$gp$lwd <- 3
+      }
+    }
+  }
+
+  if ("children" %in% getatts(rh)) {
+    for (child in names(rh$children)) {
+      rh$children[[child]] <- get_filld(rh$children[[child]])
+    }
+  }
+}
+
+
+run_deseq <- function(tab, phenotype_data, min_detect = 50, min_samples = 8) {
   sub_as <- (tab[rowSums(tab > min_detect) > min_samples,])
   print(dim(sub_as))
 
@@ -493,12 +592,14 @@ runDESeq <- function(tab, phenotype_data, min_detect=50, min_samples=8) {
               ddsObj=ddsObj, sub=sub_as))
 }
 
-pcaAndMatrices <- function(res, out_dir = "deseq2") {
+pca_and_matrices <- function(res, out_dir = "deseq2") {
   ## Initial input matrices
   dir.create(out_dir, recursive = T, showWarnings = FALSE)
 
   res$tab %>% as.data.frame %>% 
-    rownames_to_column("gene") %>% write_tsv(file.path(out_dir, "input_matrix.tsv"))
+    rownames_to_column("gene") %>%
+    write_tsv(file.path(out_dir, "input_matrix.tsv"))
+  
   res$phenotype %>% write_tsv(file.path(out_dir, "phenotype_data.tsv"))
   
   saveRDS(res, file.path(out_dir, "deseq2obj.rds"))
@@ -507,11 +608,13 @@ pcaAndMatrices <- function(res, out_dir = "deseq2") {
     rownames_to_column("gene") %>%    
     write_tsv(file.path(out_dir, "input_matrix.filt.tsv"))
   
-  counts(res$ddsObj, normalized=TRUE) %>% as.data.frame %>% rownames_to_column("gene") %>%
+  counts(res$ddsObj, normalized=TRUE) %>% as.data.frame %>%
+    rownames_to_column("gene") %>%
     write_tsv(file.path(out_dir, "input_matrix.filt.normalized.tsv"))
   
   assay(res$vFalse) %>% as.data.frame %>% rownames_to_column("gene") %>%
-    write_tsv(file.path(out_dir, "input_matrix.filt.normalized.vst_corrected.tsv"))
+    write_tsv(
+      file.path(out_dir, "input_matrix.filt.normalized.vst_corrected.tsv"))
   
   pdf(file.path(out_dir, "input_matrix.filt.normalized.vst_corrected_PCA.pdf"), 
       width=7, height=7)
@@ -520,7 +623,7 @@ pcaAndMatrices <- function(res, out_dir = "deseq2") {
   dev.off()
 }
 
-volcanoPlot <- function(dsqres, degenes, title,
+volcano_plot <- function(dsqres, degenes, title,
                         curve = list(sd = 0.15, sc = 10, offset = 1),
                         curve_scale = 1, curve_show = FALSE, ylim = NULL) {
 
@@ -589,14 +692,14 @@ volcanoPlot <- function(dsqres, degenes, title,
 pairwise_hmap_volcano <- function(ddsObj,
                                   transformed_counts = NULL,
                                   numer = "FRT", denom = "TAF2",
-                                  top.ngenes_tocluster = 2000,
-                                  top.ngenes_tohighlight = 50,
-                                  lFC.zoom = 1.5, pAdj.zoom = 20,
-                                  kmeans = 2, out.dirprefix=".") {
+                                  top_ngenes_tocluster = 2000,
+                                  top_ngenes_tohighlight = 50,
+                                  lFC_zoom = 1.5, pAdj_zoom = 20,
+                                  kmeans = 2, out_dirprefix = ".") {
   ntitle <- paste0(numer, " vs ", denom)
-  outdir <- file.path(out.dirprefix,
-                     tolower(gsub("[^A-Za-z0-9]", "_", ntitle)))
-  
+  outdir <- file.path(out_dirprefix,
+                      tolower(gsub("[^A-Za-z0-9]", "_", ntitle)))
+
   dir.create(outdir, recursive=T, showWarnings=FALSE)
 
   ## 1. Perform RNA-seq contrast between numerator and denominator
@@ -607,39 +710,41 @@ pairwise_hmap_volcano <- function(ddsObj,
                       independentFiltering = FALSE) %>% 
     as.data.frame %>% rownames_to_column("gene") %>%
     mutate(mLog10Padj = -log10(padj))
-
+  
   norm_counts <- counts(ddsObj,normalized=TRUE)
-
+  
   top_genes_tocluster <- (dsqres %>% arrange(desc(mLog10Padj)) %>% 
-                          head(top.ngenes_tocluster))$gene
+                          head(top_ngenes_tocluster))$gene
   top_genes_tohighlight <- (dsqres %>% arrange(desc(mLog10Padj)) %>% 
-                            head(top.ngenes_tohighlight))$gene
-
+                            head(top_ngenes_tohighlight))$gene
+  
   write_tsv(data.frame(top_genes_tocluster=top_genes_tocluster), 
             file.path(outdir, paste0("clustered_genes.top",
-                                     top.ngenes_tocluster, ".tsv")))
+                                     top_ngenes_tocluster, ".tsv")))
   write_tsv(data.frame(top_genes_tohighlight = top_genes_tohighlight), 
             file.path(outdir, paste0("volcano_genes.tophighlight",
-                                     top.ngenes_tohighlight, ".tsv")))
-  
-  sample_columns <- c(grep(paste0("^", numer), colnames(norm_counts), value = T),
-                     grep(paste0("^", denom), colnames(norm_counts), value = T))
-  
-  ## Volcano Plots
-  p1 <- volcanoPlot(dsqres,
-                   top_genes_tohighlight,
-                   ntitle,
-                   curve = list(sd = 0.3, sc = 60, offset = 10), 
-                   curve_show = F)
-  ## Volcano Plots zoomed in
-  p2 <- volcanoPlot(dsqres %>% filter(abs(log2FoldChange) < lFC.zoom &
-                                      mLog10Padj < pAdj.zoom),
-                    top_genes_tohighlight,
-                    paste0(ntitle, " (zoomed)"),
-                    curve = list(sd = 0.25, sc = 5, offset = 8),
-                    ylim = c(0,22), 
-                    curve_show = F)
+                                     top_ngenes_tohighlight, ".tsv")))
 
+  sample_columns <- c(grep(paste0("^", numer),
+                           colnames(norm_counts), value = T),
+                      grep(paste0("^", denom),
+                           colnames(norm_counts), value = T))
+
+  ## Volcano Plots
+  p1 <- volcano_plot(dsqres,
+                     top_genes_tohighlight,
+                     ntitle,
+                     curve = list(sd = 0.3, sc = 60, offset = 10), 
+                     curve_show = F)
+  ## Volcano Plots zoomed in
+  p2 <- volcano_plot(dsqres %>% filter(abs(log2FoldChange) < lFC_zoom &
+                                       mLog10Padj < pAdj_zoom),
+                     top_genes_tohighlight,
+                     paste0(ntitle, " (zoomed)"),
+                     curve = list(sd = 0.25, sc = 5, offset = 8),
+                     ylim = c(0,22), 
+                     curve_show = F)
+  
   hmaps <- wrap_plots(list(p1, p2), ncol = 1, guides = "collect") &
     theme_bw() +
     theme(legend.position = "none")
@@ -685,13 +790,13 @@ pairwise_hmap_volcano <- function(ddsObj,
 }
 
 
-nice_kmeans_heatmap_norm_and_trans <- function(norms, trans, 
-                                           genes_tocluster=NULL, 
-                                           sample_columns=NULL, 
-                                           genes_tohighlight=NULL, 
-                                           dsqres, 
-                                           kmeans, out_dir, 
-                                           heatprefix, ntitle) {
+nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
+                                               genes_tocluster = NULL, 
+                                               sample_columns = NULL, 
+                                               genes_tohighlight = NULL, 
+                                               dsqres, 
+                                               kmeans, out_dir, 
+                                               heatprefix, ntitle) {
 
   if (is.null(genes_tocluster)) {
     message("using all genes in normalised matrix for clustering")
@@ -716,13 +821,13 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
   ##saveRDS(list(dsqres, res_dsqres), 
   ##        paste0(format(Sys.time(), "%H-%M-%S--"), "BUMM.rds"))
   
-  dsq_dsq = left_join(dsqres, 
-                      res_dsqres$clusters,
-                      by = c("gene" = "gene")) %>% 
+  dsq_dsq <- left_join(dsqres, 
+                       res_dsqres$clusters,
+                       by = c("gene" = "gene")) %>% 
     mutate(norm_cluster = case_when(
              is.na(cluster) ~ "not in norm heatmap",
              TRUE ~ cluster)) %>% select(-cluster)
-
+  
   ## Heatmaps using Corrected Normalized Counts
   if (!is.null(trans)) {
     message("Using transformed counts too")
@@ -738,26 +843,24 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
     )
     ## Merge Trans cluster
     dsq_dsq <- left_join(dsq_dsq,
-                        res_dsqres_trans$clusters,
-                        by = c("gene" = "gene")) %>% 
+                         res_dsqres_trans$clusters,
+                         by = c("gene" = "gene")) %>% 
       mutate(trans_cluster = case_when(
                is.na(cluster) ~ "not in trans heatmap",
                TRUE ~ cluster)) %>% select(-cluster)
   }
 
-  save.cluster <- file.path(out_dir, 
+  save_cluster <- file.path(out_dir, 
                            paste0("deseq2.results.cluster.k", kmeans, ".tsv"))
-  write_tsv(dsq_dsq, save.cluster)
-  message("Saved DESeq k", kmeans, "fill:rgb(33.72549%,0%,0%);: ", save.cluster)
+  write_tsv(dsq_dsq, save_cluster)
+  message("Saved DESeq k", kmeans, "fill:rgb(33.72549%,0%,0%);: ", save_cluster)
 }
 
 
-nice_kmeans_heatmap <- function(
-                                norm_counts, k, out_dir="heatmaps_k",
+nice_kmeans_heatmap <- function(norm_counts, k, out_dir="heatmaps_k",
                                 heatprefix = "heatmap", prefix_title = "", 
                                 highlight_genes=NULL,
-                                width_in = 6, height_in = 6)
-{
+                                width_in = 6, height_in = 6) {
   ## normalised counts should be in the correct sample order already
   suppressPackageStartupMessages(library(ComplexHeatmap))
   options(repr.plot.height = height_in, repr.plot.width = width_in)
@@ -799,7 +902,7 @@ nice_kmeans_heatmap <- function(
                    cluster_rows = TRUE, ## Prevents annotation bunching if TRUE
                    show_row_dend = FALSE,
                    row_gap = unit(3, "mm"),
-                   name = "mat", 
+                   name = "mat",
                    row_title = rtitle,
                    col = colorRampPalette(c("black", "#bb0000"))(100),
                    cluster_columns = FALSE,
@@ -825,18 +928,18 @@ nice_kmeans_heatmap <- function(
   output_prefix <- file.path(out_dir, paste0(heatprefix, ".k", k, "."))
 
   save_svg <- paste0(output_prefix, "svg")
-  save_svgold <- paste0(output_prefix, "_old.svg")
+  ##save_svgold <- paste0(output_prefix, "_old.svg")
   save_pdf <- paste0(output_prefix, "pdf")
-  save_png <- paste0(output_prefix, "png")
-  
+  ##save_png <- paste0(output_prefix, "png")
+
   save_scale <- paste0(output_prefix, "scale.tsv")
   save_norm <- paste0(output_prefix, "norm.tsv")
-  save_cluster <- paste0(output_prefix, "clusters.tsv")
+  ##save_cluster <- paste0(output_prefix, "clusters.tsv")
 
   ## Hack to remove the weird grey lines
   ## TODO: Fix, scaling issue...
-###bhm <- better_heatmap(hm_now)
-  
+  ###bhm <- better_pheatmap(hm_now)
+
   ##svg(save_svgold, width = width_in, height = height_in)
   ##print(hm_now)
   ##dev.off()
