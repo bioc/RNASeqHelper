@@ -379,39 +379,57 @@ better_pheatmap <- function(ph) {
   }
 }
 
+#' @title Produce a single heatmap
+#' @description Generate a single pheatmap and save to file
+#' @param ordered_cols A vectors of sample names.
+#' @param gaps_idxs vector of row indices that show where to put gaps
+#'   into heatmap.
+#' @param main A string depicting the title of the heatmap.
+#' @param show_genes A vectors of gene names to highlight in the plot.
+#' @param out_dir A string depicting the output directory of the
+#'   heatmap.
+#' @param outfix A string depicting the prefix of the heatmap filename
+#' @return None. A heatmap and a corrected "better_pheatmap" is saved
+#'   to the output directory.
+single_heatmap <- function(scaledata, ordered_cols, gaps_idxs, main,
+                           show_genes, out_dir = "", outfix = "") {
+    output_svg_prefix <- file.path(out_dir, paste0("genes.k", k, "."))
 
-single_heatmap <- function(scaledata, ordered_cols, gaps_idxs,
-                           output_svg_prefix,
-                           outfix = "") {
-  main <- paste0(nrow(scaledata), " genes, clustered into k=", 
-                 k, " ordered by ", outfix)
-  colors_kr <- colorRampPalette(c("black", "#bb0000"))(100)
-  svg(tempfile(fileext = ".svg"))
-  ph <- pheatmap::pheatmap(
-                    scaledata_k[, ordered_cols],
-                    cluster_rows = FALSE,
-                    cluster_cols = FALSE,
-                    show_rownames = TRUE,
-                    labels_row = show_genes,
-                    cellwidth = 40,
-                    col = colors_kr,
-                    fontsize_row = 8,
-                    border_color = NA,
-                    gaps_row = gaps_idxs,          # gap after each block
-                    main = main,
-                    ...
-                  )
-  dev.off()
+    colors_kr <- colorRampPalette(c("black", "#bb0000"))(100)
+    svg(tempfile(fileext = ".svg"))
+    ph <- pheatmap::pheatmap(
+        scaledata_k[, ordered_cols],
+        cluster_rows = FALSE,
+        cluster_cols = FALSE,
+        show_rownames = TRUE,
+        labels_row = show_genes,
+        cellwidth = 40,
+        col = colors_kr,
+        fontsize_row = 8,
+        border_color = NA,
+        gaps_row = gaps_idxs, # gap after each block
+        main = main,
+        ...
+    )
+    dev.off()
 
-  svg(paste0(output_svg_prefix, outfix, ".svg"))
-  graphics::plot.new()
-  ##print(ph)
-  print(better_pheatmap(ph))
-  dev.off()
+    svg(paste0(output_svg_prefix, outfix, ".svg"))
+    graphics::plot.new()
+    ## print(ph)
+    print(better_pheatmap(ph))
+    dev.off()
 }
 
 
-
+#' @title Correlation Gene Cluster Scores
+#' @description Calculate correlation scores of genes to the centroid
+#'   of their clusters.
+#' @param scaledata a matrix of numeric scaled data.
+#' @param kmolten a dataframe of k cluster centroids.
+#' @param k_clusters a vector of integer clusters, associated to the
+#'   row (gene) names of the `scaledata'.
+#' @param condition_list a vector of sample names.
+#' @return a list of gene scores, centroids, sorted gene rows.
 run_kmolten_perclust <- function(scaledata, kmolten,
                                  k_clusters,
                                  condition_list) {
@@ -419,7 +437,6 @@ run_kmolten_perclust <- function(scaledata, kmolten,
   cores <- list()
   kmolten_list <- list()
   scores <- list()
-  ##corescores <- list()
 
   for (i in clusters_unique) {
     core_i <- kmolten[kmolten$cluster == i, ]
@@ -435,13 +452,12 @@ run_kmolten_perclust <- function(scaledata, kmolten,
     k_i_molten <- k_i_molten[order(k_i_molten$value), ]
     kmolten_list[[i]] <- k_i_molten
     scores[[i]] <- score_i
-    ##corescores[[i]] <- corescore_i
     cores[[i]] <- core_i
   }
   ## name collected values
-  names(kmolten_list) <- paste("K", 1:k, "molten", sep = '')
-  names(cores) <- paste("core", 1:k, sep = '')
-  names(scores) <- paste("score", 1:k, sep = '')
+  names(kmolten_list) <- paste0("K", seq_along(clusters_unique), "molten")
+  names(cores) <- paste0("core", seq_along(clusters_unique))
+  names(scores) <- paste0("score", seq_along(clusters_unique))
 
   return(list(scores = scores, cores = cores, kmolten_list = kmolten_list))
 }
@@ -474,8 +490,6 @@ do_kmeans <- function(data, k, plot_list, out_dir = "heatmaps_k",
   if (!dir.exists(out_dir)) {
     dir.create(out_dir)
   }
-
-  output_svg_prefix <- file.path(out_dir, paste0("genes.k", k, "."))
 
   scaledata <- t(scale(t(data)))
   scaledata <- scaledata[complete.cases(scaledata), ] ## Remove non-zero
@@ -533,10 +547,14 @@ do_kmeans <- function(data, k, plot_list, out_dir = "heatmaps_k",
     ## Blank out any non-listed genes
     show_genes[!(show_genes %in% highlight_genes)] <- ""
   }
+  main_title <- paste0(nrow(scaledata), " genes, clustered into k=", 
+                 k, " ordered by ", outfix)
+
   for (name in names(plot_list)) {
     message("-[single_heatmap]- ", name)
     single_heatmap(scaledata, plot_list[[name]], gaps_idxs,
-                   output_svg_prefix, name)
+                   main_title, show_genes,
+                   name)
   }
   return(scaledata_k)
 }
@@ -599,33 +617,33 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
   res$tab %>% as.data.frame %>% 
     rownames_to_column("gene") %>%
     write_tsv(file.path(out_dir, "input_matrix.tsv"))
-  
+
   res$phenotype %>% write_tsv(file.path(out_dir, "phenotype_data.tsv"))
-  
+
   saveRDS(res, file.path(out_dir, "deseq2obj.rds"))
-  
+
   res$sub %>% as.data.frame %>% 
     rownames_to_column("gene") %>%    
     write_tsv(file.path(out_dir, "input_matrix.filt.tsv"))
-  
+
   counts(res$ddsObj, normalized=TRUE) %>% as.data.frame %>%
     rownames_to_column("gene") %>%
     write_tsv(file.path(out_dir, "input_matrix.filt.normalized.tsv"))
-  
+
   assay(res$vFalse) %>% as.data.frame %>% rownames_to_column("gene") %>%
     write_tsv(
       file.path(out_dir, "input_matrix.filt.normalized.vst_corrected.tsv"))
-  
-  pdf(file.path(out_dir, "input_matrix.filt.normalized.vst_corrected_PCA.pdf"), 
-      width=7, height=7)
+
+  pdf(file.path(out_dir, "input_matrix.filt.normalized.vst_corrected_PCA.pdf"),
+      width = 7, height = 7)
   print(res$bFalse)
   print(res$bTrue)
   dev.off()
 }
 
 volcano_plot <- function(dsqres, degenes, title,
-                        curve = list(sd = 0.15, sc = 10, offset = 1),
-                        curve_scale = 1, curve_show = FALSE, ylim = NULL) {
+                         curve = list(sd = 0.15, sc = 10, offset = 1),
+                         curve_scale = 1, curve_show = FALSE, ylim = NULL) {
 
   options(repr.plot.height = 12, repr.plot.width = 12) 
 
