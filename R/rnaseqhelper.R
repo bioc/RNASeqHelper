@@ -1,6 +1,6 @@
 ## Mehmet Tekman, 2023
 
-#' @importFrom tidyverse group_by arrange summarise mutate select write_tsv read_tsv summarize n_distinct left_join case_when
+#' @importFrom tidyverse group_by arrange summarise mutate select write_tsv read_tsv summarize n_distinct left_join case_when rownames_to_column write_tsv
 #' @importFrom ggplot2 ggplot facet_wrap stat_summary ylab xlab scale_x_continuous ggtitle ggsave theme theme_bw
 #' @importFrom patchwork wrap_plots
 #' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq plotPCA vst
@@ -513,8 +513,8 @@ do_kmeans <- function(data, k, plot_list, out_dir = "heatmaps_k",
   res_rkmopcl <- run_kmolten_perclust(scaledata, kmolten, k_clusters,
                                       plot_list[[1]])
   scores <- res_rkmopcl$scores
-  cores <- res_rkmopcl$cores
-  kmolten_list <- res_rkmopcl$kmolten_list
+  ##cores <- res_rkmopcl$cores
+  ##kmolten_list <- res_rkmopcl$kmolten_list
 
   scaledata_k <-cbind(scaledata,
                       cluster = k_clust$cluster,
@@ -529,10 +529,10 @@ do_kmeans <- function(data, k, plot_list, out_dir = "heatmaps_k",
     message("-[df2dflist]-")
     col_vals <- unique(df[, col_selector])
     dfl <- lapply(seq(col_vals), function(i) {
-        select_df(df,
-            val = col_vals[i],
-            col_selector
-            )
+      select_df(df,
+                val = col_vals[i],
+                col_selector
+                )
     })
     names(dfl) <- col_vals
     dfl
@@ -589,7 +589,23 @@ get_filld <- function(rh) {
 }
 
 
-run_deseq <- function(tab, phenotype_data, min_detect = 50, min_samples = 8) {
+#' @title Run DESeq with sensible defaults
+#' @description Runs DESeq with filtering thresholds and shows PCA for
+#'   variance-stabilize-transformed data.
+#' @param tab a matrix of samples (columns) and genes (rows)
+#' @param phenotype_data a table with samples (rows) with extra
+#'   columns for annotation groups. One of these groups must be
+#'   Condition and will be used to normalize the data.
+#' @param min_occur A positive integer. A threshold (greater than or
+#'   equal to) the number of times a gene is detected in a sample,
+#'   across all samples (e.g. Gene X is only kept if it appears in 10
+#'   samples with a value greater than the `min_detect' threshold.
+#'   Default value is 3.
+#' @param min_detect A positive integer. A threshold (greater than or
+#'   equal to) for the minimum expression a gene can have for it to be
+#'   a valid occurrence in a sample. Default values is 10.
+#' @return list of tables
+run_deseq <- function(tab, phenotype_data, min_detect = 10, min_occur = 3) {
   sub_as <- (tab[rowSums(tab > min_detect) > min_samples,])
   print(dim(sub_as))
 
@@ -610,9 +626,16 @@ run_deseq <- function(tab, phenotype_data, min_detect = 50, min_samples = 8) {
               ddsObj=ddsObj, sub=sub_as))
 }
 
+#' @title Print and Store PCA and Matrices
+#' @description Takes the output of a DESeq2 run and generates
+#'   normalization tables and PCAs
+#' @param res Output of `run_deseq`.
+#' @param out_dir String depicting the output directory to place
+#'   tables and plots.
+#' @return None. Plots and tables and placed into output directory.
 pca_and_matrices <- function(res, out_dir = "deseq2") {
   ## Initial input matrices
-  dir.create(out_dir, recursive = T, showWarnings = FALSE)
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
   res$tab %>% as.data.frame %>% 
     rownames_to_column("gene") %>%
@@ -641,6 +664,17 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
   dev.off()
 }
 
+
+#' @title Produce a Volcano Plot
+#' @description ASD
+#' @param dsqres A table of DESeq2 results
+#' @param degenes A vector of genes.
+#' @param title A string depicting the title of the plot
+#' @param curve A list of three components: sd, sc, offset.
+#' @param curve_scale A numeric curve scaling factor.
+#' @param curve_show A boolean on whether or not to show the curve.
+#' @param ylim A vector of two components to limit the Y-axis.
+#' @return A ggplot2 object of the volcano plot.
 volcano_plot <- function(dsqres, degenes, title,
                          curve = list(sd = 0.15, sc = 10, offset = 1),
                          curve_scale = 1, curve_show = FALSE, ylim = NULL) {
@@ -667,7 +701,7 @@ volcano_plot <- function(dsqres, degenes, title,
   }
 
   ## We highlight genes in the zoomed zone fitting the curve, but the 
-  ## main DE genes are shown as shapes and higlighted
+  ## main DE genes are shown as shapes and highlighted
   red <- ana %>%
     mutate(isTopN = gene %in% degenes) %>%
     mutate(highlight = isTopN | (mLog10Padj > cust_fun(log2FoldChange)))
@@ -681,18 +715,14 @@ volcano_plot <- function(dsqres, degenes, title,
                shape = isTopN,
                label = gene)) + 
     geom_point() + 
-    scale_colour_manual(values = c("TRUE"  = "red",
-                                   "FALSE" = "grey")) +
-    scale_shape_manual(values =  c("TRUE"  =  5,
-                                   "FALSE" = 19)) + 
-    scale_x_continuous(lim = c(-max_x,max_x), 
-                       breaks = waiver(),
+    scale_colour_manual(values = c("TRUE"  = "red", "FALSE" = "grey")) +
+    scale_shape_manual(values =  c("TRUE"  =  5, "FALSE" = 19)) + 
+    scale_x_continuous(lim = c(-max_x,max_x), breaks = waiver(),
                        n.breaks = 10) +
     geom_label_repel(
       data = red %>% filter(highlight == TRUE) %>% head(15),
       box.padding = 0.5,
       max.overlaps = 30,
-      ##max.overlaps = 20,
       colour = "black") +
     ggtitle(title)
 
@@ -705,8 +735,19 @@ volcano_plot <- function(dsqres, degenes, title,
   return(plot1)
 }
 
-
-
+#' @title
+#' @description
+#' @param ddsObj
+#' @param transformed_counts
+#' @param numer
+#' @param denom
+#' @param top_ngenes_tocluster
+#' @param top_ngenes_tohighlight
+#' @param lFC_zoom
+#' @param pAdj_zoom
+#' @param kmeans
+#' @param out_dirprefix
+#' @return 
 pairwise_hmap_volcano <- function(ddsObj,
                                   transformed_counts = NULL,
                                   numer = "FRT", denom = "TAF2",
@@ -728,8 +769,8 @@ pairwise_hmap_volcano <- function(ddsObj,
                       independentFiltering = FALSE) %>% 
     as.data.frame %>% rownames_to_column("gene") %>%
     mutate(mLog10Padj = -log10(padj))
-  
-  norm_counts <- counts(ddsObj,normalized=TRUE)
+
+  norm_counts <- counts(ddsObj, normalized = TRUE)
   
   top_genes_tocluster <- (dsqres %>% arrange(desc(mLog10Padj)) %>% 
                           head(top_ngenes_tocluster))$gene
@@ -744,15 +785,15 @@ pairwise_hmap_volcano <- function(ddsObj,
                                      top_ngenes_tohighlight, ".tsv")))
 
   sample_columns <- c(grep(paste0("^", numer),
-                           colnames(norm_counts), value = T),
+                           colnames(norm_counts), value = TRUE),
                       grep(paste0("^", denom),
-                           colnames(norm_counts), value = T))
+                           colnames(norm_counts), value = TRUE))
 
   ## Volcano Plots
   p1 <- volcano_plot(dsqres,
                      top_genes_tohighlight,
                      ntitle,
-                     curve = list(sd = 0.3, sc = 60, offset = 10), 
+                     curve = list(sd = 0.3, sc = 60, offset = 10),
                      curve_show = F)
   ## Volcano Plots zoomed in
   p2 <- volcano_plot(dsqres %>% filter(abs(log2FoldChange) < lFC_zoom &
@@ -760,9 +801,9 @@ pairwise_hmap_volcano <- function(ddsObj,
                      top_genes_tohighlight,
                      paste0(ntitle, " (zoomed)"),
                      curve = list(sd = 0.25, sc = 5, offset = 8),
-                     ylim = c(0,22), 
+                     ylim = c(0,22),
                      curve_show = F)
-  
+
   hmaps <- wrap_plots(list(p1, p2), ncol = 1, guides = "collect") &
     theme_bw() +
     theme(legend.position = "none")
