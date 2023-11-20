@@ -1,0 +1,44 @@
+---
+title: "RNASeqHelper reference manual"
+date: "`r Sys.Date()`"
+author: "Mehmet Tekman"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{Example CustomGenome analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+\tableofcontents
+```{r echo=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=8, dpi=50, dev='jpeg') 
+```
+
+# RNASeqHelper
+
+This vignette enables an RNA-seq analysis
+
+
+## Input Matrices and Annotation
+
+
+
+## Analysis
+
+
+```R
+tab = read_tsv(tab)
+keep_genes = high_quality_genes(tab, min_occur=3, min_detect=10)
+res = run_deseq(tab[keep_genes,], phenotype_data, 30, 4)
+pca_and_matrices(res, out_dir="outputs/input_matrices_and_deseq")
+pairwise_hmap_volcano(res$ddsObj,
+                      transformed_counts = assay(res$vFalse),
+                      numer = "NLS", denom = "TAF2",
+                      top_ngenes_tocluster = 2000,
+                      top_ngenes_tohighlight = 25,
+                      lFC_zoom = 1.5, pAdj_zoom = 20,
+                      kmeans = c(2,5,8),
+                      out_dirprefix="outputs")
+```

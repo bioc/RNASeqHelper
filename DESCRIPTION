@@ -2,11 +2,27 @@ Package: RNASeqHelper
 Title: Generate Heatmaps and Volcano Plots for your DESeq2 Contract of Interest
 Version: 0.0.0.9000
 Authors@R: 
-    person("Mehmet", "Tekman", , "mtekman89@gmail.com", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0002-4181-2676"))
+    c(person(given="Mehmet", family="Tekman",
+      email = "mtekman89@gmail.com",
+      role = c("aut", "cre"), comment = c(ORCID = "0000-0002-4181-2676")),
+      person(given="Sebastian", family="Arnold",
+      email = "sebastian.arnold@pharmakol.uni-freiburg.de",
+      role = c("fnd"), comment = c(ORCID = "0000-0002-2688-9210")))
 Description: Perform a full DESeq2 analysis for your RNA-seq data, generating
              colourful Volcano and Kmeans-clustered Heatmaps.
-License: GPL (>= 3)
+License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
+VignetteBuilder: knitr
+biocViews: RNASeq, QualityControl, GeneExpression
+Imports: pheatmap (>= 1.0.12), patchwork (>= 1.1.3), DESeq2 (>= 1.40.2), dplyr (>= 1.1.3), readr (>= 2.1.4), tibble (>= 3.2.1), ggplot2 (>= 3.4.4), ComplexHeatmap (>= 2.16.0), ggrepel (>= 0.9.4), purrr (>= 1.0.2)
+Suggests:
+    BiocStyle,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+URL: https://gitlab.com/mtekman/rnaseqhelper
+BugReports: https://gitlab.com/mtekman/rnaseqhelper/issues
+Config/testthat/edition: 3
+
