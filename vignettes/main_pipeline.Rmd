@@ -29,10 +29,26 @@ This vignette enables an RNA-seq analysis
 
 
 ```R
-tab = read_tsv(tab)
-keep_genes = high_quality_genes(tab, min_occur=3, min_detect=10)
-res = run_deseq(tab[keep_genes,], phenotype_data, 30, 4)
-pca_and_matrices(res, out_dir="outputs/input_matrices_and_deseq")
+tab = as.matrix(do.call(cbind, 
+                        lapply(list.files("3_counts/", pattern="*.tab", full.names=T), 
+                        function(x){ read.table(x,row.names=1,check.names=FALSE) })))
+colnames(tab) = gsub(
+    "\\.TAF2_dIDR", "",
+    gsub("\\.align.*", "", list.files("3_counts/", pattern="*.tab"))
+)                 
+
+phenotype_data =  
+    data.frame(Sample = colnames(tab),
+               Condition = gsub("_\\d$", "", colnames(tab)),
+               Replicate = gsub("^.*_", "", colnames(tab)))
+
+keep_genes = high_quality_genes(tab, min_occur=3, min_detect=2, 
+                                out_dir="test/1_genes")
+
+res = run_deseq(tab, keep_genes, phenotype_data)
+
+pca_and_matrices(res, out_dir="test/input_matrices_and_deseq")
+
 pairwise_hmap_volcano(res$ddsObj,
                       transformed_counts = assay(res$vFalse),
                       numer = "NLS", denom = "TAF2",
@@ -40,5 +56,6 @@ pairwise_hmap_volcano(res$ddsObj,
                       top_ngenes_tohighlight = 25,
                       lFC_zoom = 1.5, pAdj_zoom = 20,
                       kmeans = c(2,5,8),
-                      out_dirprefix="outputs")
+                      out_dirprefix="test/outputs")
+
 ```
