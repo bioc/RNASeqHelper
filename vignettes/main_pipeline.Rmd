@@ -58,4 +58,7 @@ pairwise_hmap_volcano(res$ddsObj,
                       kmeans = c(2,5,8),
                       out_dirprefix="test/outputs")
 
+## Todo gene plots
+
+
 ```
