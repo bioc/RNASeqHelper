@@ -26,20 +26,19 @@
 #'   variance-stabilize-transformed data.
 #' @param tab a matrix of samples (columns) and informative genes
 #'   (rows), ideally subset using the function `high_quality_genes'.
+#' @param keep_genes a vector of genes to subset.
 #' @param phenotype_data a table with samples (rows) with extra
 #'   columns for annotation groups. One of these groups must be
 #'   Condition and will be used to normalize the data.
-#' @param min_occur A positive integer. A threshold (greater than or
-#'   equal to) the number of times a gene is detected in a sample,
-#'   across all samples (e.g. Gene X is only kept if it appears in 10
-#'   samples with a value greater than the `min_detect' threshold.
-#'   Default value is 3.
-#' @param min_detect A positive integer. A threshold (greater than or
-#'   equal to) for the minimum expression a gene can have for it to be
-#'   a valid occurrence in a sample. Default values is 10.
 #' @return list of tables
-run_deseq <- function(tab, phenotype_data, min_detect = 10, min_occur = 3) {
+run_deseq <- function(tab, keep_genes, phenotype_data) {
 
+  if (!("Condition" %in% colnames(phenotype_data))) {
+    stop("Could not find `Condition' column in phenotype data")
+  }
+
+  sub_as <- tab[keep_genes, ]
+  
   ddsObj <- DESeqDataSetFromMatrix(
     countData = sub_as,
     colData = phenotype_data,
@@ -48,13 +47,13 @@ run_deseq <- function(tab, phenotype_data, min_detect = 10, min_occur = 3) {
   ddsObj <- DESeq(ddsObj)
 
   vsd1 <- vst(ddsObj, blind=FALSE)
-  p1 <- plotPCA(vsd1, intgroup=c("Condition"),returnData =F )
+  p1 <- plotPCA(vsd1, intgroup = c("Condition"), returnData = F )
   vsd2 <- vst(ddsObj, blind=TRUE)
-  p2 <- plotPCA(vsd2, intgroup=c("Condition"),returnData =F )
+  p2 <- plotPCA(vsd2, intgroup = c("Condition"), returnData = F )
   return(list(tab = tab, phenotype = phenotype_data,
               bFalse = p1, bTrue = p2,
               vFalse = vsd1, vTrue = vsd2,
-              ddsObj=ddsObj, sub=sub_as))
+              ddsObj = ddsObj, sub = sub_as))
 }
 
 #' @title Print and Store PCA and Matrices
@@ -125,6 +124,9 @@ pairwise_hmap_volcano <- function(ddsObj,
                                   top_ngenes_tohighlight = 50,
                                   lFC_zoom = 1.5, pAdj_zoom = 20,
                                   kmeans = 2, out_dirprefix = ".") {
+
+  message("Started Analysis: ", date())
+  
   plot_title <- paste0(numer, " vs ", denom)
   outdir <- file.path(out_dirprefix,
                       tolower(gsub("[^A-Za-z0-9]", "_", plot_title)))
@@ -190,7 +192,7 @@ pairwise_hmap_volcano <- function(ddsObj,
   message("Saved DESeq2 Results: ", deseq2_out)
 
   for (kmk in kmeans) {
-    message("Calculating k=", kmk)
+    message("[Running k=", kmk, "]")
 
     ## Pairwise Heatmap of Normalised and Transformed Counts
     nice_kmeans_heatmap_norm_and_trans(
@@ -214,6 +216,7 @@ pairwise_hmap_volcano <- function(ddsObj,
       heatprefix = "heatmap_all",
       plot_title = "Heatmap All")
   }
+  message("Finished Analysis: ", date())
 }
 
 
@@ -243,15 +246,18 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
                                                heatprefix, plot_title) {
 
   if (is.null(genes_tocluster)) {
-    message("using all genes in normalised matrix for clustering")
-    genes_tocluster = rownames(norms)
+    message(" - Using all genes in normalised matrix for clustering")
+    genes_tocluster <- rownames(norms)
   }
   if (is.null(sample_columns)) {
-    message("using all samples in normalised matrix for clustering")
-    sample_columns = colnames(norms)
+    message(" - Heatmap all samples in normalised matrix for clustering")
+    sample_columns <- colnames(norms)
+  } else {
+    message(" - Heatmap: ", paste0(sample_columns, collapse = ","))
   }
 
   ## Heatmaps
+  message("   - Using normalized counts")
   res_dsqres <- single_kmeans_heatmap(
     norms[genes_tocluster, sample_columns],
     k = kmeans,
@@ -270,7 +276,7 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
 
   ## Heatmaps using Corrected Normalized Counts
   if (!is.null(trans)) {
-    message("Using transformed counts too")
+    message("   - Using transformed counts too")
 
     ## Heatmaps
     res_dsqres_trans <- single_kmeans_heatmap(
@@ -293,7 +299,7 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
   save_cluster <- file.path(out_dir,
                            paste0("deseq2.results.cluster.k", kmeans, ".tsv"))
   write_tsv(dsq_dsq, save_cluster)
-  message("Saved DESeq k", kmeans, "fill:rgb(33.72549%,0%,0%);: ", save_cluster)
+  message("   - Storing Results k", kmeans, ":", save_cluster)
 }
 
 
@@ -340,7 +346,7 @@ single_kmeans_heatmap <- function(norm_counts, k, out_dir = "heatmaps_k",
                     cluster_row_slices = FALSE, ## Arrange the K? NO
                     cluster_rows = TRUE, ## Prevents annotation bunching if TRUE
                     show_row_dend = FALSE,
-                    row_gap = units(3, "mm"),
+                    row_gap = unit(3, "mm"),
                     name = "mat",
                     row_title = rtitle,
                     col = colorRampPalette(c("black", "#bb0000"))(100),
@@ -397,11 +403,11 @@ single_kmeans_heatmap <- function(norm_counts, k, out_dir = "heatmaps_k",
 
   write_tsv(as.data.frame(norm_counts) %>%
             rownames_to_column("gene"), save_norm)
-  message("Saved Norm: ", save_norm)
+  message("     - Saved Norm: ", save_norm)
 
   write_tsv(as.data.frame(scaledata) %>% rownames_to_column("gene"),
             save_scale)
-  message("Saved Scale: ", save_norm)
+  message("     - Saved Scale: ", save_norm)
 
   return(list(plot = hm_now,
               clusters = cluster_assignments, scaled = scaledata))
@@ -844,6 +850,11 @@ high_quality_genes <- function(sam_mat,
   res <- rowSums(sam_mat >= min_detect) >= min_occur
   keep_genes <- res[res == TRUE]
   drop_genes <- res[res == FALSE]
+
+  if (!dir.exists(out_dir)) {
+      dir.create(out_dir, recursive = TRUE)
+  }
+  
   write_tsv(
       as.data.frame(res),
       file.path(out_dir, paste0(
