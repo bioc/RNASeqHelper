@@ -515,7 +515,7 @@ high_quality_genes <- function(sam_mat,
   }
   
   write_tsv(
-      as.data.frame(res),
+      data.frame(Gene = names(res), Keep = res),
       file.path(out_dir, paste0(
           "smallestGroup",
           min_occur, "-detected",
