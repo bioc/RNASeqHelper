@@ -21,6 +21,55 @@
 
 
 
+#' @title Run a full RNASeqhelper analysis
+#' @description Single function to call all other functions in the
+#'     analysis and perform a full analysis from a few starting
+#'     parameters
+#' @param tab a matrix of samples (columns) and informative genes
+#'     (rows), ideally subset using the function `high_quality_genes'.
+#' @param phenotype_data a table with samples (rows) with extra
+#'     columns for annotation groups. One of these groups must be
+#'     Condition and will be used to normalize the data.
+#' @param keep_params A list of parameters to override the default
+#'     `high_quality_genes' function. If \code{NULL}, then use the
+#'     default.
+#' @param heat_params A list of parameters to override the default
+#'     `pairwise_heatmap_volcano' function. If \code{NULL}, then use
+#'     the default.
+#' @param gplot_params A list of parameters to override the default
+#'     `gene_clusters_by_score' function. If \code{NULL}, then use the
+#'     default.
+rnaseqhelper <- function(tab, phenotype,
+                         keep_params = NULL, heat_params = NULL,
+                         gcbs_params = NULL) {
+
+    ## out_dir="test/1_genes"
+    keep_genes <- do.call(high_quality_genes, keep_params)
+    
+    res <- run_deseq(tab, keep_genes, phenotype_data)
+
+    ## out_dir="test/1_genes"
+    pca_and_matrices(res, out_dir="test/input_matrices_and_deseq")
+
+    ## res$ddsObj
+    ## out_dirprefix="test/outputs"
+    phv <- do.call(pairwise_hmap_volcano, heat_params)
+
+    ## out_dir = "gene_cluster"
+
+    ## Conversion to long table needs to happen here
+    
+    gene_clusters_by_score(tab, out_dir = "gene_cluster")
+
+
+    
+    gene_plots_by_gene(norm_long, scale_long, gois_list,
+                       outprefix = "gene.lists",
+                       out_dir = "gene_lists")
+
+}
+
+
 #' @title Run DESeq with sensible defaults
 #' @description Runs DESeq with filtering thresholds and shows PCA for
 #'   variance-stabilize-transformed data.
@@ -605,7 +654,8 @@ volcano_plot <- function(dsqres, degenes, title,
 #' @title Gene clusters by score
 #' @description Generate cluster gene plots for various score
 #'   thresholds
-#' @param tab Dataframe containing TODO
+#' @param tab A dataframe with long plotting data containing at least
+#'   the columns `cluster', `condition', `value', and `time'
 #' @param score_thresh Vector of numerics depicting cluster score
 #'   thresholds to filter for high quality genes in each cluster
 #'   before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
