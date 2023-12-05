@@ -34,7 +34,7 @@
 #' @param heat_params A list of parameters to override the default
 #'     `pairwise_heatmap_volcano' function. If \code{NULL}, then use
 #'     the default.
-#' @param gplot_params A list of parameters to override the default
+#' @param gene list of parameters to override the default
 #'     `gene_clusters_by_score' function. If \code{NULL}, then use the
 #'     default.
 rnaseqhelper <- function(tab, phenotype,
@@ -56,9 +56,6 @@ rnaseqhelper <- function(tab, phenotype,
   heat_params$transformed_counts <- res$vFalse
   heat_params$out_dirprefix <- "test/2_heatmaps"
   phv <- do.call(pairwise_hmap_volcano, heat_params)
-
-  ## PHV generates normalised and scaled matrix counts. We need to
-  ## extract them here.
 }
 
 
