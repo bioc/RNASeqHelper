@@ -201,7 +201,6 @@ pairwise_hmap_volcano <- function(ddsObj,
                            colnames(norm_counts), value = TRUE),
                       grep(paste0("^", denom),
                            colnames(norm_counts), value = TRUE))
-
   ## Volcano Plots
   p1 <- volcano_plot(dsqres,
                      top_genes_tohighlight,
@@ -348,80 +347,105 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
                             paste0("deseq2.results.cluster.k", kmeans, ".tsv"))
   write_tsv(dsq_dsq, save_cluster)
   message("   - Storing Results k", kmeans, ":", save_cluster)
-  return()
 }
 
 
+#' @title Heatmap with Gene plots
+#' @description Generate a clustered heatmaps for a specific k means
+#'   value.
+#' @param norm_counts A matrix containing normalised values.
+#' @param k An integer for the k-value for kmeans.
+#' @param out_dir A character sequence depicting the directory
+#' @param heatprefix A character sequence depicting the prefix for
+#'   heatmaps
+#' @param prefix_title A string to prefix the title of heatmap.
+#' @param highlight_hmap_genes A vector of genes to highlight in the
+#'   heatmap. 
+#' @param gene_plot_genes A list of genes to plot. If NULL, use
+#'   highlight_hmap_genes. If FALSE, do not plot.
+#' @param width_in A positive integer for the number of inches in the plot width
+#' @param height_in A positive integer for the number of inches in the plot height.
+#' @return A list of two components; clustered tables, and scaled matrix.
 heatmap_with_geneplots <- function(norm_counts, k, out_dir = "heatmaps_k",
                                    heatprefix = "heatmap", prefix_title = "",
                                    highlight_hmap_genes = NULL,
-                                   gene_plot_genes = NULL, ## if null, don't do it
+                                   gene_plot_genes = NULL,
                                    width_in = 6, height_in = 6) {
-  ## normalised counts should be in the correct sample order already
-
-  ## if gene_plot_genes is FALSE, don't do any gene scores
-  ## if gene_plot genes is NULL, use highlight_hmap_genes:
-  ##    if highlight_hmap_genes is NULL, it populates them from rowMeans
-  ## if gene_plot_genes is TRUE:
-  ##    if highlight_hmap_genes is 
-  
+  ## normalised counts should be in the correct sample order already  
   options(repr.plot.height = height_in, repr.plot.width = width_in)
-
   if (!dir.exists(out_dir)) {
     dir.create(out_dir)
   }
 
   if (is.null(highlight_hmap_genes)) {
     ## If no genes given, show top N
-    top_genes <- head(names(sort(rowMeans(norm_counts),
-                                 decreasing = T)), 30)
-    top_title <- paste0(nrow(norm_counts), " DE genes, top ",
+    top_genes <- head(names(sort(rowMeans(norm_counts), decreasing = T)), 30)
+    top_title <- paste0(nrow(norm_counts), " DE genes, top ", 
                         length(top_genes), " highlighted")
   } else {
     top_genes <- highlight_hmap_genes
     top_title <- paste0(nrow(norm_counts), " DE genes, ",
                         length(top_genes), " highlighted")
   }
+  if (is.null(gene_plot_genes)) {
+    gene_plot_genes <- list(topgenes = top_genes)
+  }
 
   scale_mat <- t(scale(t(norm_counts)))
   scale_mat <- scale_mat[complete.cases(scale_mat), ] ## Remove non-zero
 
-  single_kmeans_heatmap()
+  cluster_assignments <- single_kmeans_heatmap(scale_mat, k,
+                                               top_genes, prefix_title, top_title,
+                                               out_dir, heatprefix, width_in, height_in)
   
   write_tsv(as.data.frame(norm_counts) %>%
             rownames_to_column("gene"), save_norm)
   message("     - Saved Norm: ", save_norm)
-
   write_tsv(as.data.frame(scale_mat) %>% rownames_to_column("gene"),
             save_scale)
   message("     - Saved Scale: ", save_norm)
-
   
-  ## Conversion to long table needs to happen here
-  long_norm <- norm_counts %>%
-    rownames_to_column("gene") %>%
-    pivot_longer(-gene, names_to = "Sample", values_to = "value")
+  if (gene_plot_genes != FALSE) {
+    ## Conversion to long table needs to happen here
+    long_norm <- norm_counts %>%
+      rownames_to_column("gene") %>%
+      pivot_longer(-gene, names_to = "Sample", values_to = "value")
 
-  long_scale <- scale_mat %>%
-    rownames_to_column("gene") %>%
-    pivot_longer(-gene, names_to = "Sample", values_to = "value")
+    long_scale <- scale_mat %>%
+      rownames_to_column("gene") %>%
+      pivot_longer(-gene, names_to = "Sample", values_to = "value")
 
-  gene_clusters_by_score(long_norm, out_dir = "test/gene_cluster_norm")
-  gene_clusters_by_score(long_scale, out_dir = "test/gene_cluster_scale")
-  
-  gene_plots_by_gene(norm_long, scale_long, gois_list,
-                     outprefix = "gene.lists",
-                     out_dir = "gene_lists")
-
-
-  
-  return(list(plot = hm_now,
-              clusters = cluster_assignments, scaled = scale_mat))
+    gene_clusters_by_score(long_norm, out_dir = file.path(out_dir, "gene_cluster_norm"))
+    message("     - Plotting genes Norm: ", save_norm)
+    gene_clusters_by_score(long_scale, out_dir = file.path(out_dir, "gene_cluster_scale"))
+    message("     - Plotting genes Scaled : ", save_norm)
+    
+    gene_plots_by_gene(norm_long, scale_long, gene_plot_genes,
+                       outprefix = "gene.lists",
+                       out_dir = file.path(out_dir, "gene_lists"))
+    message("     - Plotting genes list: ", save_norm)
+  }
+  return(list(clusters = cluster_assignments, scaled = scale_mat))
 }
 
 
+#' @title A single K-means Heatmap
+#' @description Plot a clustered heatmap
+#' @param scale_mat A matrix of scaled values.
+#' @param k A positive integer  for the k value of kmeans
+#' @param top_genes A list of genes to plot
+#' @param prefix_title A string to prefix the title of heatmap.
+#' @param top_title A character string for the title of the heatmap.
+#' @param out_dir A character sequence depicting the directory
+#' @param heatprefix A character sequence depicting the prefix for
+#'   heatmaps
+#' @param width_in A positive integer for the number of inches in the plot width
+#' @param height_in A positive integer for the number of inches in the plot height.
+#' @return A list of two components; clustered tables, and scaled matrix.
 single_kmeans_heatmap <- function(scale_mat, k, top_genes,
-                                  prefix_title, top_title) {
+                                  prefix_title, top_title,
+                                  out_dir, heatprefix,
+                                  width_in, height_in) {
   ha <- rowAnnotation(
     foo = anno_mark(
       at = which(rownames(scale_mat) %in% top_genes),
@@ -477,22 +501,22 @@ single_kmeans_heatmap <- function(scale_mat, k, top_genes,
 
   ## Hack to remove the weird grey lines
   ## TODO: Fix, scaling issue...
-###bhm <- better_pheatmap(hm_now)
+  ##bhm <- better_pheatmap(hm_now)
 
   ##svg(save_svgold, width = width_in, height = height_in)
   ##print(hm_now)
   ##dev.off()
 
   svg(save_svg, width = width_in, height = height_in)
-  ##grid.draw(bhm)
+  ##grid.draw(bhm);
   print(hm_now)
   dev.off()
 
   pdf(save_pdf, width = width_in, height = height_in)
-  ##grid.draw(bhm)
-  ##grid.newpage()
+  ##grid.draw(bhm); grid.newpage()
   print(hm_now)
   dev.off()
+  return(cluster_assignments)
 }
 
 
