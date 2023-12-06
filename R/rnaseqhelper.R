@@ -1,43 +1,48 @@
-#' @importFrom tibble rownames_to_column
-#' @importFrom readr read_tsv write_tsv
-#' @importFrom dplyr arrange case_when filter group_by left_join mutate desc
-#' @importFrom dplyr n_distinct select summarise %>%
-#' @importFrom ggplot2 ggplot facet_wrap stat_summary ylab xlab theme theme_bw
-#' @importFrom ggplot2 scale_x_continuous ggtitle ggsave aes geom_point waiver
-#' @importFrom ggplot2 scale_y_continuous scale_y_log10 scale_colour_manual
-#' @importFrom ggplot2 element_blank scale_shape_manual geom_function units
-#' @importFrom patchwork wrap_plots
-#' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq plotPCA vst results counts
-#' @importFrom pheatmap pheatmap
-#' @importFrom grDevices colorRampPalette dev.off pdf svg
-#' @importFrom stats complete.cases cor dnorm kmeans time
-#' @importFrom utils head
-#' @importFrom grid grid.grabExpr gpar
+#' @importFrom dplyr arrange case_when filter group_by left_join
+#'   mutate desc n_distinct select summarise %>% .data
+#' @importFrom ggplot2 ggplot facet_wrap stat_summary ylab xlab theme
+#'   theme_bw scale_x_continuous ggtitle ggsave aes_string geom_point
+#'   waiver scale_y_continuous scale_y_log10 scale_colour_manual
+#'   element_blank scale_shape_manual geom_function labeller
+#'   geom_jitter
 #' @importFrom ggrepel geom_label_repel
-#' @importFrom ComplexHeatmap Heatmap anno_mark draw
-#' @importFrom purrr map map_lgl
 #' @importFrom graphics plot.new
+#' @importFrom grid grid.grabExpr gpar unit
+#' @importFrom grDevices colorRampPalette dev.off pdf svg
+#' @importFrom patchwork wrap_plots
+#' @importFrom pheatmap pheatmap
+#' @importFrom purrr map map_lgl
+#' @importFrom readr read_tsv write_tsv
+#' @importFrom stats complete.cases cor dnorm kmeans time
+#' @importFrom tibble rownames_to_column
+#' @importFrom tidyr pivot_longer
+#' @importFrom utils head modifyList
+#' @importFrom ComplexHeatmap Heatmap anno_mark draw row_order
+#'   rowAnnotation
+#' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq plotPCA vst results
+#'   counts
+#' @importFrom SummarizedExperiment assay
 
 
 #' @title Run a full RNASeqhelper analysis
 #' @description Single function to call all other functions in the
-#'     analysis and perform a full analysis from a few starting
-#'     parameters
+#'   analysis and perform a full analysis from a few starting
+#'   parameters
 #' @param tab a matrix of samples (columns) and informative genes
-#'     (rows), ideally subset using the function `high_quality_genes'.
-#' @param phenotype_data a table with samples (rows) with extra
-#'     columns for annotation groups. One of these groups must be
-#'     Condition and will be used to normalize the data.
+#'   (rows), ideally subset using the function `high_quality_genes'.
+#' @param phenotype_data a table with samples (rows) with extra columns for
+#'   annotation groups. One of these groups must be Condition and will
+#'   be used to normalize the data.
 #' @param keep_params A list of parameters to override the default
-#'     `high_quality_genes' function. If \code{NULL}, then use the
-#'     default.
+#'   `high_quality_genes' function. If \code{NULL}, then use the
+#'   default.
 #' @param heat_params A list of parameters to override the default
-#'     `pairwise_heatmap_volcano' function. If \code{NULL}, then use
-#'     the default.
-#' @param gene list of parameters to override the default
-#'     `gene_clusters_by_score' function. If \code{NULL}, then use the
-#'     default.
-rnaseqhelper <- function(tab, phenotype,
+#'   `pairwise_heatmap_volcano' function. If \code{NULL}, then use the
+#'   default.
+#' @param gcbs_params list of parameters to override the default
+#'   `gene_clusters_by_score' function. If \code{NULL}, then use the
+#'   default. Contains "genes_of_interest" and "scores".
+rnaseqhelper <- function(tab, phenotype_data,
                          keep_params = NULL, heat_params = NULL,
                          gcbs_params = NULL) {
 
@@ -55,6 +60,7 @@ rnaseqhelper <- function(tab, phenotype,
   heat_params <- modifyList(heat_params_defaults, heat_params) ## override
   heat_params$transformed_counts <- res$vFalse
   heat_params$out_dirprefix <- "test/2_heatmaps"
+  heat_params$
   phv <- do.call(pairwise_hmap_volcano, heat_params)
 }
 
@@ -135,26 +141,28 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 
 #' @title Pairwise heatmaps and volcano plots
 #' @description For a given contrast and DESeq object produce volcano
-#'     plots of the DE genes, and generate a global heatmap with those
-#'     DE genes and a pairwise one with just the numerator and
-#'     denominator samples.
+#'   plots of the DE genes, and generate a global heatmap with those
+#'   DE genes and a pairwise one with just the numerator and
+#'   denominator samples.
 #' @param ddsObj A DESeq object,
 #' @param transformed_counts REALLY UNSURE WHAT'S GOING ON HERE
 #' @param numer A string prefix to select sample columns that will be
-#'     part of the numerator part of the contrast.
+#'   part of the numerator part of the contrast.
 #' @param denom A string prefix to select sample columns that will
-#'     part of the denominator part of the contrast.
+#'   part of the denominator part of the contrast.
 #' @param top_ngenes_tocluster A positive integer. How many of the top
-#'     log10 padj values to take. Default is 2000.
+#'   log10 padj values to take. Default is 2000.
 #' @param top_ngenes_tohighlight A positive integer. How many of the
-#'     top log10 padj values to label in the plots. Default is 50.
+#'   top log10 padj values to label in the plots. Default is 50.
+#' @param genes_of_interest A named list of gene groups to plot in
+#'   ribbot plots. If NULL
 #' @param lFC_zoom A number to depict the Log2FC threshold of the
-#'     zoomed plot.
+#'   zoomed plot.
 #' @param pAdj_zoom A number to depict the adjusted p-value threshold
-#'     of the zoomed plot.
+#'   of the zoomed plot.
 #' @param kmeans A list? of positive integers to do k-means
 #' @param out_dirprefix A character prefix outlining the directory and
-#'     basename in which plots and tables will be deployed.
+#'   basename in which plots and tables will be deployed.
 #' @return Void. Plots are deposited to the output directory.
 #' @export
 pairwise_hmap_volcano <- function(ddsObj,
@@ -162,6 +170,7 @@ pairwise_hmap_volcano <- function(ddsObj,
                                   numer = "FRT", denom = "TAF2",
                                   top_ngenes_tocluster = 2000,
                                   top_ngenes_tohighlight = 50,
+                                  genes_of_interest = NULL,
                                   lFC_zoom = 1.5, pAdj_zoom = 20,
                                   kmeans = 2, out_dirprefix = ".") {
 
@@ -171,20 +180,20 @@ pairwise_hmap_volcano <- function(ddsObj,
   outdir <- file.path(out_dirprefix,
                       tolower(gsub("[^A-Za-z0-9]", "_", plot_title)))
 
-  dir.create(outdir, recursive=T, showWarnings=FALSE)
+  dir.create(outdir, recursive = T, showWarnings = FALSE)
 
   ## 1. Perform RNA-seq contrast between numerator and denominator
   dsqres <- results(ddsObj, contrast = c("Condition", numer, denom),
                     cooksCutoff = Inf,
                     independentFiltering = FALSE) %>%
     as.data.frame %>% rownames_to_column("gene") %>%
-    mutate(mLog10Padj = -log10(padj))
+    mutate(mLog10Padj = -log10(.data[["padj"]]))
 
   norm_counts <- counts(ddsObj, normalized = TRUE)
 
-  top_genes_tocluster <- (dsqres %>% arrange(desc(mLog10Padj)) %>%
+  top_genes_tocluster <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                           head(top_ngenes_tocluster))$gene
-  top_genes_tohighlight <- (dsqres %>% arrange(desc(mLog10Padj)) %>%
+  top_genes_tohighlight <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                             head(top_ngenes_tohighlight))$gene
 
   write_tsv(data.frame(top_genes_tocluster=top_genes_tocluster),
@@ -193,7 +202,7 @@ pairwise_hmap_volcano <- function(ddsObj,
   write_tsv(data.frame(top_genes_tohighlight = top_genes_tohighlight),
             file.path(outdir, paste0("volcano_genes.tophighlight",
                                      top_ngenes_tohighlight, ".tsv")))
-  
+
   sample_columns <- c(grep(paste0("^", numer),
                            colnames(norm_counts), value = TRUE),
                       grep(paste0("^", denom),
@@ -205,8 +214,9 @@ pairwise_hmap_volcano <- function(ddsObj,
                      curve = list(sd = 0.3, sc = 60, offset = 10),
                      curve_show = F)
   ## Volcano Plots zoomed in
-  p2 <- volcano_plot(dsqres %>% filter(abs(log2FoldChange) < lFC_zoom &
-                                       mLog10Padj < pAdj_zoom),
+  p2 <- volcano_plot(dsqres %>% filter(abs(.data[["log2FoldChange"]]) <
+                                       .data[["lFC_zoom"]] &
+                                       .data[["mLog10Padj"]] < .data[["pAdj_zoom"]]),
                      top_genes_tohighlight,
                      paste0(plot_title, " (zoomed)"),
                      curve = list(sd = 0.25, sc = 5, offset = 8),
@@ -226,7 +236,8 @@ pairwise_hmap_volcano <- function(ddsObj,
   message("Saved Volcano: ", volcano_svg)
 
   dsqres %>%
-    mutate(isTopN.gene = gene %in% top_genes_tohighlight) %>%
+    mutate(isTopN.gene = .data[["gene"]] %in%
+             top_genes_tohighlight) %>%
     write_tsv(deseq2_out)
   message("Saved DESeq2 Results: ", deseq2_out)
 
@@ -236,9 +247,10 @@ pairwise_hmap_volcano <- function(ddsObj,
     ## Pairwise Heatmap of Normalised and Transformed Counts
     nice_kmeans_heatmap_norm_and_trans(
       norm_counts, transformed_counts,
-      genes_tocluster = top_genes_tocluster,
+      genes_to_cluster = top_genes_tocluster,
       sample_columns = sample_columns,
-      genes_tohighlight = top_genes_tohighlight,
+      genes_to_highlight = top_genes_tohighlight,
+      genes_of_interest = genes_of_interest,
       dsqres, kmk,
       out_dir = file.path(outdir, paste0("kmeans", kmk)),
       heatprefix = "heatmap_pairwise",
@@ -252,9 +264,10 @@ pairwise_hmap_volcano <- function(ddsObj,
     ## Global Heatmap of Normalised and Transformed Counts
     nice_kmeans_heatmap_norm_and_trans(
       norm_counts, transformed_counts,
-      genes_tocluster = top_genes_tocluster,
+      genes_to_cluster = top_genes_tocluster,
       sample_columns = NULL,
-      genes_tohighlight = top_genes_tohighlight,
+      genes_to_highlight = top_genes_tohighlight,
+      genes_of_interest = genes_of_interest,
       dsqres, kmk,
       out_dir = file.path(outdir, paste0("kmeans", kmk)),
       heatprefix = "heatmap_all",
@@ -275,6 +288,10 @@ pairwise_hmap_volcano <- function(ddsObj,
 #'   default), then cluster all genes.
 #' @param sample_columns a vector of sample names. If NULL (the
 #'   default), then use all samples
+#' @param genes_to_highlight A vector of genes to highlight in the
+#'   heatmap.
+#' @param genes_of_interest A list of gene groups to highlight in
+#'   ribbon plots.
 #' @param dsqres the output of the DESeq2 function \code{results},
 #'   usually called after performing a contrast.
 #' @param kmeans A list? of positive integers to do k-means.
@@ -283,16 +300,17 @@ pairwise_hmap_volcano <- function(ddsObj,
 #' @param heatprefix String to prefix heatmap plot filenames
 #' @param plot_title String depicting title to embed into plot,
 nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
-                                               genes_tocluster = NULL,
+                                               genes_to_cluster = NULL,
                                                sample_columns = NULL,
-                                               genes_tohighlight = NULL,
+                                               genes_to_highlight = NULL,
+                                               genes_of_interest = NULL,
                                                dsqres,
                                                kmeans, out_dir,
                                                heatprefix, plot_title) {
 
-  if (is.null(genes_tocluster)) {
+  if (is.null(genes_to_cluster)) {
     message(" - Using all genes in normalised matrix for clustering")
-    genes_tocluster <- rownames(norms)
+    genes_to_cluster <- rownames(norms)
   }
   if (is.null(sample_columns)) {
     message(" - Heatmap all samples in normalised matrix for clustering")
@@ -304,40 +322,43 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
   ## Heatmaps
   message("   - Using normalized counts")
   res_dsqres <- heatmap_with_geneplots(
-    norms[genes_tocluster, sample_columns],
+    norms[genes_to_cluster, sample_columns],
     k = kmeans,
     out_dir = out_dir,
     heatprefix = heatprefix,
     prefix_title = paste0(plot_title, " :"),
-    highlight_genes = genes_tohighlight)
+    highlight_hmap_genes = genes_to_highlight,
+    genes_of_interest = genes_of_interest
+  )
 
   dsq_dsq <- left_join(dsqres,
                        res_dsqres$clusters,
                        by = c("gene" = "gene")) %>%
     mutate(norm_cluster = case_when(
-             is.na(cluster) ~ "not in norm heatmap",
-             TRUE ~ cluster)) %>% select(-cluster)
+             is.na(.data[["cluster"]]) ~ "not in norm heatmap",
+             TRUE ~ .data[["cluster"]])) %>%
+    select(-.data[["cluster"]])
 
   ## Heatmaps using Corrected Normalized Counts
   if (!is.null(trans)) {
     message("   - Using transformed counts too")
 
-    ## Heatmaps
     res_dsqres_trans <- heatmap_with_geneplots(
-      trans[genes_tocluster, sample_columns],
+      trans[genes_to_cluster, sample_columns],
       k = kmeans,
       out_dir = out_dir,
       heatprefix = paste0(heatprefix, ".vst_corrected"),
       prefix_title = paste0(plot_title, " (vst corrected) :"),
-      highlight_genes = genes_tohighlight
+      highlight_hmap_genes = genes_to_highlight,
+      genes_of_interest = genes_of_interest
     )
     ## Merge Trans cluster
     dsq_dsq <- left_join(dsq_dsq,
                          res_dsqres_trans$clusters,
                          by = c("gene" = "gene")) %>%
       mutate(trans_cluster = case_when(
-               is.na(cluster) ~ "not in trans heatmap",
-               TRUE ~ cluster)) %>% select(-cluster)
+               is.na(.data[["cluster"]]) ~ "not in trans heatmap",
+               TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
   }
 
   save_cluster <- file.path(out_dir,
@@ -357,16 +378,19 @@ nice_kmeans_heatmap_norm_and_trans <- function(norms, trans,
 #'   heatmaps
 #' @param prefix_title A string to prefix the title of heatmap.
 #' @param highlight_hmap_genes A vector of genes to highlight in the
-#'   heatmap. 
-#' @param gene_plot_genes A list of genes to plot. If NULL, use
+#'   heatmap.
+#' @param genes_of_interest A list of genes to plot. If NULL, use
 #'   highlight_hmap_genes. If FALSE, do not plot.
-#' @param width_in A positive integer for the number of inches in the plot width
-#' @param height_in A positive integer for the number of inches in the plot height.
-#' @return A list of two components; clustered tables, and scaled matrix.
+#' @param width_in A positive integer for the number of inches in the
+#'   plot width.
+#' @param height_in A positive integer for the number of inches in the
+#'   plot height.
+#' @return A list of two components; clustered tables, and scaled
+#'   matrix.
 heatmap_with_geneplots <- function(norm_counts, k, out_dir = "heatmaps_k",
                                    heatprefix = "heatmap", prefix_title = "",
                                    highlight_hmap_genes = NULL,
-                                   gene_plot_genes = NULL,
+                                   genes_of_interest = NULL,
                                    width_in = 6, height_in = 6) {
   ## normalised counts should be in the correct sample order already  
   options(repr.plot.height = height_in, repr.plot.width = width_in)
@@ -384,16 +408,20 @@ heatmap_with_geneplots <- function(norm_counts, k, out_dir = "heatmaps_k",
     top_title <- paste0(nrow(norm_counts), " DE genes, ",
                         length(top_genes), " highlighted")
   }
-  if (is.null(gene_plot_genes)) {
-    gene_plot_genes <- list(topgenes = top_genes)
+  if (is.null(genes_of_interest)) {
+    genes_of_interest <- list(topgenes = top_genes)
   }
 
   scale_mat <- t(scale(t(norm_counts)))
   scale_mat <- scale_mat[complete.cases(scale_mat), ] ## Remove non-zero
 
-  cluster_assignments <- single_kmeans_heatmap(scale_mat, k,
-                                               top_genes, prefix_title, top_title,
-                                               out_dir, heatprefix, width_in, height_in)
+  cluster_assignments <- single_kmeans_heatmap(
+    scale_mat, k,
+    top_genes, prefix_title, top_title,
+    out_dir, heatprefix, width_in, height_in)
+
+  save_norm <- file.path(out_dir, paste0("k", k, "_norm.tsv"))
+  save_scale <- file.path(out_dir, paste0("k", k, "_scale.tsv"))
   
   write_tsv(as.data.frame(norm_counts) %>%
             rownames_to_column("gene"), save_norm)
@@ -401,23 +429,26 @@ heatmap_with_geneplots <- function(norm_counts, k, out_dir = "heatmaps_k",
   write_tsv(as.data.frame(scale_mat) %>% rownames_to_column("gene"),
             save_scale)
   message("     - Saved Scale: ", save_norm)
-  
-  if (gene_plot_genes != FALSE) {
+
+  if (genes_of_interest != FALSE) {
     ## Conversion to long table needs to happen here
     long_norm <- norm_counts %>%
       rownames_to_column("gene") %>%
-      pivot_longer(-gene, names_to = "Sample", values_to = "value")
+      pivot_longer(-.data[["gene"]], names_to = "Sample",
+                   values_to = "value")
 
     long_scale <- scale_mat %>%
       rownames_to_column("gene") %>%
-      pivot_longer(-gene, names_to = "Sample", values_to = "value")
+      pivot_longer(-.data[["gene"]], names_to = "Sample", values_to = "value")
 
-    gene_clusters_by_score(long_norm, out_dir = file.path(out_dir, "gene_cluster_norm"))
+    gene_clusters_by_score(long_norm, out_dir = file.path(out_dir,
+                                                          "gene_cluster_norm"))
     message("     - Plotting genes Norm: ", save_norm)
-    gene_clusters_by_score(long_scale, out_dir = file.path(out_dir, "gene_cluster_scale"))
+    gene_clusters_by_score(long_scale, out_dir = file.path(out_dir,
+                                                           "gene_cluster_scale"))
     message("     - Plotting genes Scaled : ", save_norm)
     
-    gene_plots_by_gene(norm_long, scale_long, gene_plot_genes,
+    gene_plots_by_gene(long_norm, long_scale, genes_of_interest,
                        outprefix = "gene.lists",
                        out_dir = file.path(out_dir, "gene_lists"))
     message("     - Plotting genes list: ", save_norm)
@@ -529,7 +560,7 @@ better_pheatmap <- function(ph) {
   ## taken from
   ##https://stackoverflow.com/questions/44318690/no-border-color-in-pheatmap-in-r
 
-  if (class(ph) == "Heatmap") {
+  if (inherits(ph) == "Heatmap") {
     ## ComplexHeatmap
     ph <- grid.grabExpr(draw(ph))
     hmaps <- ph$children
@@ -649,9 +680,9 @@ volcano_plot <- function(dsqres, degenes, title,
 
   ## Extract relevant info from DESeq results
   ana <- dsqres %>%
-    select(c(gene, log2FoldChange, padj)) %>%
-    mutate(mLog10Padj = -log10(padj)) %>%
-    arrange(desc(mLog10Padj))
+    select(c(.data[["gene"]], .data[["log2FoldChange"]], .data[["padj"]])) %>%
+    mutate(mLog10Padj = -log10(.data[["padj"]])) %>%
+    arrange(desc(.data[["mLog10Padj"]]))
 
   ## The main function -- do not edit?
   cust_fun <- function(x, sd = 0.15, sc = 10, offset = 1) {
@@ -669,24 +700,25 @@ volcano_plot <- function(dsqres, degenes, title,
   ## We highlight genes in the zoomed zone fitting the curve, but the
   ## main DE genes are shown as shapes and highlighted
   red <- ana %>%
-    mutate(isTopN = gene %in% degenes) %>%
-    mutate(highlight = isTopN | (mLog10Padj > cust_fun(log2FoldChange)))
+    mutate(isTopN = .data[["gene"]] %in% degenes) %>%
+    mutate(highlight = .data[["isTopN"]] |
+             (.data[["mLog10Padj"]] > cust_fun(.data[["log2FoldChange"]])))
 
   max_x <- max(abs(ana$log2FoldChange)) + 0.05 ##symmetry
 
   plot1 <- red %>%
-    ggplot(aes(x = log2FoldChange,
-               y = mLog10Padj,
-               colour = highlight,
-               shape = isTopN,
-               label = gene)) +
+    ggplot(aes_string(x = "log2FoldChange",
+                      y = "mLog10Padj",
+                      colour = "highlight",
+                      shape = "isTopN",
+                      label = "gene")) +
     geom_point() +
     scale_colour_manual(values = c("TRUE"  = "red", "FALSE" = "grey")) +
     scale_shape_manual(values =  c("TRUE"  =  5, "FALSE" = 19)) +
     scale_x_continuous(limits = c(-max_x,max_x), breaks = waiver(),
                        n.breaks = 10) +
     geom_label_repel(
-      data = red %>% filter(highlight == TRUE) %>% head(15),
+      data = red %>% filter(.data[["highlight"]] == TRUE) %>% head(15),
       box.padding = 0.5,
       max.overlaps = 30,
       colour = "black") +
@@ -755,7 +787,7 @@ gene_clusters_by_score <- function(tab,
 #' @return ggplot object ribbon and line plots facetted by cluster.
 cluster_gene_plots <- function(tab, score_thresh = 0,
                                out_dir = "gene_cluster") {
-  tabn <- tab %>% filter(score >= score_thresh)
+  tabn <- tab %>% filter(.data[["score"]] >= score_thresh)
   ## Keep all clusters even if they're empty
   tabn$cluster <- factor(tabn$cluster, levels = unique(sort(tab$cluster)))
   ## yes
@@ -765,12 +797,12 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
 
   ## labelling function for facet
   lab_fun <- function(s) {
-    (dat_labs %>% filter(cluster == s))$ftext
+    (dat_labs %>% filter(.data[["cluster"]] == s))$ftext
   }
 
-  p1 <- tabn %>% ggplot(aes(
-                   x = time, y = value, fill = condition,
-                   colour = condition, group = condition)) +
+  p1 <- tabn %>% ggplot(aes_string(
+                   x = "time", y = "value", fill = "condition",
+                   colour = "condition", group = "condition")) +
     stat_summary(fun.data = "mean_sdl", geom = "ribbon",
                  alpha = 0.1, colour = NA) +
     stat_summary(fun = mean, geom = "line") +
@@ -803,18 +835,19 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
 #'   contain columns of: gene, condition, time, replicate, value.
 #' @param scale_long A long dataframe of scaled values. Same format as
 #'   `norm_long'.
-#' @param gois_list A list of vectors. A list of genes which are
-#'   referenced by specific names. Unique plots will be generated for
-#'   list. e.g.
-#'       list(mygeneset1 = c("Msgn1", "Osr1", "Rspo3", "Fgf8", "Wnt3a"),
-#'            mygeneset2 = c("Mesp1", "Foxa2", "Sox17", "Lhx1", "Cer1"))
+#' @param genes_of_interest A named list of gene vectors. A list of
+#'   genes which are referenced by specific names. Unique plots will
+#'   be generated for list. e.g. list(mygeneset1 = c("Msgn1", "Osr1",
+#'   "Rspo3", "Fgf8", "Wnt3a"), mygeneset2 = c("Mesp1", "Foxa2",
+#'   "Sox17", "Lhx1", "Cer1"))
 #' @param outprefix A string depicting the output prefix for the
 #'   plots. These will be appended with the title of each gene list
 #'   and for the normalized and scaled.
 #' @param out_dir A string denoting the output directory to store
 #'   plots. Default is is "gene_lists".
 #' @export
-gene_plots_by_gene <- function(norm_long, scale_long, gois_list,
+gene_plots_by_gene <- function(norm_long, scale_long,
+                               genes_of_interest,
                                outprefix = "gene.lists",
                                out_dir = "gene_lists") {
   if (!dir.exists(out_dir)) {
@@ -830,9 +863,10 @@ gene_plots_by_gene <- function(norm_long, scale_long, gois_list,
 
   time_breaks <- sort(unique(sort(norm_long$time)))
 
-  pgene_list <- lapply(names(gois_list), function(glist_name) {
-    glist <- gois_list[[glist_name]]
-    genes_found <- unique((norm_long %>% filter(gene %in% glist))$gene)
+  pgene_list <- lapply(names(genes_of_interest), function(glist_name) {
+    glist <- genes_of_interest[[glist_name]]
+    genes_found <- unique((norm_long %>%
+                           filter(.data[["gene"]] %in% glist))$gene)
 
     if (length(genes_found) < 1) {
       message("no genes found for: ", glist_name)
@@ -840,10 +874,10 @@ gene_plots_by_gene <- function(norm_long, scale_long, gois_list,
     }
 
     pgene_norm <- norm_long %>%
-      filter(gene %in% genes_found) %>%
-      ggplot(aes(
-        x = time, y = value,
-        fill = condition, colour = condition, group = condition
+      filter(.data[["gene"]] %in% genes_found) %>%
+      ggplot(aes_string(
+        x = "time", y = "value",
+        fill = "condition", colour = "condition", group = "condition"
       )) +
       stat_summary(
         fun.data = "mean_sdl", geom = "ribbon",
@@ -876,10 +910,10 @@ gene_plots_by_gene <- function(norm_long, scale_long, gois_list,
     )
 
     pgene_scale <- scale_long %>%
-      filter(gene %in% genes_found) %>%
-      ggplot(aes(
-        x = time, y = value,
-        fill = condition, colour = condition, group = condition
+      filter(.data[["gene"]] %in% genes_found) %>%
+      ggplot(aes_string(
+        x = "time", y = "value",
+        fill = "condition", colour = "condition", group = "condition"
       )) +
       stat_summary(
         fun.data = "mean_sdl", geom = "ribbon",
@@ -913,9 +947,11 @@ gene_plots_by_gene <- function(norm_long, scale_long, gois_list,
 #' @return a table with columns of `cluster', `n' for how many genes
 #'   in that cluster, and `ftext' for labelling.
 generate_labelling_table <- function(tabn) {
-  dat_labs <- tabn %>% group_by(cluster) %>%
-    summarise(n = n_distinct(gene)) %>%
-    mutate(ftext = paste0("cluster ", cluster, ", ", n, " genes"))
+  dat_labs <- tabn %>%
+      group_by(.data[["cluster"]]) %>%
+      summarise(n = n_distinct(.data[["gene"]])) %>%
+    mutate(ftext = paste0("cluster ", .data[["cluster"]], ", ",
+                          .data[["n"]], " genes"))
 
   ## Sanity check that all factors are in summary
   miss <- which(!(levels(tabn$cluster) %in% dat_labs$cluster))
@@ -924,7 +960,7 @@ generate_labelling_table <- function(tabn) {
                                                         miss, ", 0 genes"))
     dat_labs <- rbind(dat_labs, temp)
   }
-  dat_labs <- dat_labs %>% arrange(cluster)
+  dat_labs <- dat_labs %>% arrange(.data[["cluster"]])
   return(dat_labs)
 }
 
