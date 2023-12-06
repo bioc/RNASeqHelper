@@ -13,7 +13,7 @@ vignette: >
 ---
 \tableofcontents
 ```{r echo=FALSE}
-knitr::opts_chunk$set(fig.width=8, fig.height=8, dpi=50, dev='jpeg') 
+knitr::opts_chunk$set(fig.width=8, fig.height=8, dpi=50, dev='jpeg')
 ```
 
 # RNASeqHelper
@@ -30,8 +30,10 @@ This vignette enables an RNA-seq analysis
 
 ```R
 tab = as.matrix(do.call(cbind, 
-                        lapply(list.files("3_counts/", pattern="*.tab", full.names=T), 
-                        function(x){ read.table(x,row.names=1,check.names=FALSE) })))
+                        lapply(list.files("3_counts/", pattern="*.tab",
+                               full.names=T), 
+                        function(x){ read.table(x,row.names=1,
+                        check.names=FALSE) })))
 colnames(tab) = gsub(
     "\\.TAF2_dIDR", "",
     gsub("\\.align.*", "", list.files("3_counts/", pattern="*.tab"))
@@ -61,4 +63,11 @@ pairwise_hmap_volcano(res$ddsObj,
 ## Todo gene plots
 
 
+```
+
+
+## SessionInfo
+
+```R
+sessionInfo()
 ```
