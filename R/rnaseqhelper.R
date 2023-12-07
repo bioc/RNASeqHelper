@@ -244,7 +244,7 @@ pairwise_hmap_volcano <- function(ddsObj,
         loopfunc(
             norm_counts, transformed_counts,
             top_genes_tocluster, top_genes_tohighlight,
-            sample_columns, genes_of_interest, dsqres, kmk, out_dir
+            sample_columns, genes_of_interest, dsqres, kmk, outdir
         )
     })
     NULL
@@ -264,7 +264,7 @@ loopfunc <- function(norm_counts, transformed_counts,
         genes_to_highlight = top_genes_tohighlight,
         genes_of_interest = genes_of_interest,
         dsqres, kmk,
-        out_dir = file.path(outdir, paste0("kmeans", kmk)),
+        out_dir = file.path(out_dir, paste0("kmeans", kmk)),
         heatprefix = "heatmap_pairwise",
         plot_title = "Heatmap Pairwise")
 
@@ -282,7 +282,7 @@ loopfunc <- function(norm_counts, transformed_counts,
         genes_to_highlight = top_genes_tohighlight,
         genes_of_interest = genes_of_interest,
         dsqres, kmk,
-        out_dir = file.path(outdir, paste0("kmeans", kmk)),
+        out_dir = file.path(out_dir, paste0("kmeans", kmk)),
         heatprefix = "heatmap_all",
         plot_title = "Heatmap All")
 }
@@ -810,12 +810,6 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
     if (!dir.exists(out_dir)) {
         dir.create(out_dir)
     }
-    plot_dims <- function(n) { ## Calculates plot dims for a given N plots
-        w <- ceiling(sqrt(n))
-        return(list(w = w, h = ceiling(n / w)))
-    }
-    time_breaks <- sort(unique(sort(norm_long$time)))
-
     pgene_list <- lapply(
         names(genes_of_interest), function(glist_name) {
             glist <- genes_of_interest[[glist_name]]
@@ -846,6 +840,8 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
 dothis_plot <- function(long_data, genes_found, glist_name,
                         ylab_text, title_text,
                         out_dir, outprefix, filesuffix, scaley10) {
+    time_breaks <- sort(unique(sort(long_data$time)))
+
     pgene <- long_data %>%
         filter(.data[["gene"]] %in% genes_found) %>%
         ggplot(aes_string(
@@ -866,6 +862,10 @@ dothis_plot <- function(long_data, genes_found, glist_name,
 
     if (scaley10) {
         pgene <- pgene + scale_y_log10()
+    }
+    plot_dims <- function(n) { ## Calculates plot dims for a given N plots
+        w <- ceiling(sqrt(n))
+        return(list(w = w, h = ceiling(n / w)))
     }
     pdims <- plot_dims(length(genes_found))
     ggsave(
