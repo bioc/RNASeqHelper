@@ -193,14 +193,14 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                       cooksCutoff = Inf, independentFiltering = FALSE) %>%
         as.data.frame %>% rownames_to_column("gene") %>%
         mutate(mLog10Padj = -log10(.data[["padj"]]))
-    
+
     norm_counts <- counts(ddsObj, normalized = TRUE)
 
     top_genes_tocluster <- getTopGenes(top_ngenes_tocluster, "clustered_genes.top")
     top_genes_tohighlight <- getTopGenes(top_ngenes_tohighlight, "volcano_genes.tophighlight")
 
     fancyschmancy(dsqres, top_genes_tohighlight, plot_title, outdir)
-    
+
     sample_columns <- c(grep(paste0("^", numer), colnames(norm_counts),
                              value = TRUE),
                         grep(paste0("^", denom), colnames(norm_counts),
@@ -256,7 +256,7 @@ loopfunc <- function(norm_counts, transformed_counts,
                      sample_columns, genes_of_interest,
                      dsqres, kmk, out_dir) {
     ## Pairwise Heatmap of Normalised and Transformed Counts
-    nice_kmeans_heatmap_norm_and_trans(
+    kmeans_heatmaps(
         norm_counts, transformed_counts,
         genes_to_cluster = top_genes_tocluster,
         sample_columns = sample_columns,
@@ -274,7 +274,7 @@ loopfunc <- function(norm_counts, transformed_counts,
     ## each kmeans heatmap.
 
     ## Global Heatmap of Normalised and Transformed Counts
-    nice_kmeans_heatmap_norm_and_trans(
+    kmeans_heatmaps(
         norm_counts, transformed_counts,
         genes_to_cluster = top_genes_tocluster,
         sample_columns = NULL,
@@ -308,11 +308,10 @@ loopfunc <- function(norm_counts, transformed_counts,
 #'     tables and plots.
 #' @param heatprefix String to prefix heatmap plot filenames
 #' @param plot_title String depicting title to embed into plot,
-nice_kmeans_heatmap_norm_and_trans <-
-    function(norms, trans, genes_to_cluster = NULL,
-             sample_columns = NULL, genes_to_highlight = NULL,
-             genes_of_interest = NULL, dsqres, kmeans, out_dir,
-             heatprefix, plot_title) {
+kmeans_heatmaps <- function(norms, trans, genes_to_cluster = NULL,
+                            sample_columns = NULL, genes_to_highlight = NULL,
+                            genes_of_interest = NULL, dsqres, kmeans, out_dir,
+                            heatprefix, plot_title) {
     if (is.null(genes_to_cluster)) {
         message(" - Using all genes in normalised matrix for clustering")
         genes_to_cluster <- rownames(norms)
@@ -337,8 +336,7 @@ nice_kmeans_heatmap_norm_and_trans <-
         mutate(norm_cluster = case_when(
                    is.na(.data[["cluster"]]) ~ "not in norm heatmap",
                    TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
-    ## Heatmaps using Corrected Normalized Counts
-    if (!is.null(trans)) {
+    if (!is.null(trans)) {       ## Heatmaps using Corrected Normalized Counts
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
             trans[genes_to_cluster, sample_columns], k = kmeans,
