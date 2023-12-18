@@ -60,6 +60,7 @@ rnaseqhelper <- function(tab, phenotype_data,
     heat_params$transformed_counts <- res$vFalse
     heat_params$out_dirprefix <- "test/2_heatmaps"
     heat_params$phv <- do.call(pairwise_hmap_volcano, heat_params)
+    
 }
 
 #' @title Run DESeq with sensible defaults
@@ -142,7 +143,7 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 }
 
 
-getTopGenes <- function(dsqres, top_ng, outdir, prefix) {
+top_n_genes <- function(dsqres, top_ng, outdir, prefix) {
     tgenes <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                head(top_ng))$gene
     write_tsv(data.frame(tgenes = tgenes),
@@ -180,8 +181,8 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                                   numer = "FRT", denom = "TAF2",
                                   top_ngenes_tocluster = 2000,
                                   top_ngenes_tohighlight = 50,
-                                  genes_of_interest = NULL,
-                                  lFC_zoom = 1.5, pAdj_zoom = 20,
+                                  score_thresh, genes_of_interest = NULL,
+                                  volcano_params,
                                   kmeans = 2, out_dirprefix = ".") {
     message("Started Analysis: ", date())
     plot_title <- paste0(numer, " vs ", denom)
@@ -196,24 +197,30 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 
     norm_counts <- counts(ddsObj, normalized = TRUE)
 
-    top_genes_tocluster <- getTopGenes(dsqres, top_ngenes_tocluster,
-                                       outdir, "clustered_genes.top")
-    top_genes_tohighlight <- getTopGenes(dsqres, top_ngenes_tohighlight,
-                                         outdir, "volcano_genes.tophighlight")
+    top_genes_tocluster <- top_n_genes(dsqres, top_ngenes_tocluster,
+                                     outdir, "clustered_genes.top")
+    top_genes_tohighlight <- top_n_genes(dsqres, top_ngenes_tohighlight,
+                                       outdir, "volcano_genes.tophighlight")
 
-    do_volcanos(dsqres, top_genes_tohighlight, plot_title, outdir)
+    do_volcanos(dsqres, top_genes_tohighlight, plot_title, outdir,
+                volcano_params)
 
     sample_columns <- c(grep(paste0("^", numer), colnames(norm_counts),
                              value = TRUE),
                         grep(paste0("^", denom), colnames(norm_counts),
                              value = TRUE))
 
+    genes = list(
+        cluster = top_genes_tocluster,
+        highlight = top_genes_tohighlight,
+        interest = genes_of_interest
+    )
+
     zzz <- lapply(kmeans, function(kmk) {
         message("[Running k=", kmk, "]")
         do_kmeans(
-            norm_counts, transformed_counts,
-            top_genes_tocluster, top_genes_tohighlight,
-            sample_columns, genes_of_interest, dsqres, kmk, outdir
+            norm_counts, transformed_counts, genes, sample_columns, dsqres,
+            kmk, outdir
         )
     })
     NULL
@@ -254,16 +261,15 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir) {
 
 
 do_kmeans <- function(norm_counts, transformed_counts,
-                      top_genes_tocluster, top_genes_tohighlight,
-                      sample_columns, genes_of_interest,
+                      genes, sample_columns,
+                      score_thresh,
                       dsqres, kmk, out_dir) {
     ## Pairwise Heatmap of Normalised and Transformed Counts
     kmeans_heatmaps(
         norm_counts, transformed_counts,
-        genes_to_cluster = top_genes_tocluster,
+        genes = genes,
         sample_columns = sample_columns,
-        genes_to_highlight = top_genes_tohighlight,
-        genes_of_interest = genes_of_interest,
+        score_thresh = score_thresh,
         dsqres, kmk,
         out_dir = file.path(out_dir, paste0("kmeans", kmk)),
         heatprefix = "heatmap_pairwise",
@@ -278,10 +284,8 @@ do_kmeans <- function(norm_counts, transformed_counts,
     ## Global Heatmap of Normalised and Transformed Counts
     kmeans_heatmaps(
         norm_counts, transformed_counts,
-        genes_to_cluster = top_genes_tocluster,
+        genes = genes,
         sample_columns = NULL,
-        genes_to_highlight = top_genes_tohighlight,
-        genes_of_interest = genes_of_interest,
         dsqres, kmk,
         out_dir = file.path(out_dir, paste0("kmeans", kmk)),
         heatprefix = "heatmap_all",
@@ -310,13 +314,12 @@ do_kmeans <- function(norm_counts, transformed_counts,
 #'     tables and plots.
 #' @param heatprefix String to prefix heatmap plot filenames
 #' @param plot_title String depicting title to embed into plot,
-kmeans_heatmaps <- function(norms, trans, genes_to_cluster = NULL,
-                            sample_columns = NULL, genes_to_highlight = NULL,
-                            genes_of_interest = NULL, dsqres, kmeans, out_dir,
-                            heatprefix, plot_title) {
-    if (is.null(genes_to_cluster)) {
+kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest
+                            sample_columns = NULL, score_thresh,
+                            dsqres, kmeans, out_dir, heatprefix, plot_title) {
+    if (is.null(genes$cluster)) {
         message(" - Using all genes in normalised matrix for clustering")
-        genes_to_cluster <- rownames(norms)
+        genes$cluster <- rownames(norms)
     }
     if (is.null(sample_columns)) {
         message(" - Heatmap all samples in normalised matrix for clustering")
@@ -328,10 +331,9 @@ kmeans_heatmaps <- function(norms, trans, genes_to_cluster = NULL,
     ## Heatmaps
     message("   - Using normalized counts")
     res_dsqres <- heatmap_with_geneplots(
-        norms[genes_to_cluster, sample_columns], k = kmeans, out_dir = out_dir,
+        norms[genes$cluster, sample_columns], k = kmeans, out_dir = out_dir,
         heatprefix = heatprefix, prefix_title = paste0(plot_title, " :"),
-        highlight_hmap_genes = genes_to_highlight,
-        genes_of_interest = genes_of_interest
+        genes = genes
     )
     dsq_dsq <- left_join(dsqres, res_dsqres$clusters,
                          by = c("gene" = "gene")) %>%
@@ -341,12 +343,12 @@ kmeans_heatmaps <- function(norms, trans, genes_to_cluster = NULL,
     if (!is.null(trans)) {       ## Heatmaps using Corrected Normalized Counts
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
-            trans[genes_to_cluster, sample_columns], k = kmeans,
+            trans[genes$cluster, sample_columns], k = kmeans,
             out_dir = out_dir,
             heatprefix = paste0(heatprefix, ".vst_corrected"),
             prefix_title = paste0(plot_title, " (vst corrected) :"),
-            highlight_hmap_genes = genes_to_highlight,
-            genes_of_interest = genes_of_interest)
+            score_thresh = score_thresh,
+            genes = genes)
         ## Merge Trans cluster
         dsq_dsq <- left_join(dsq_dsq, res_dsqres_trans$clusters,
                              by = c("gene" = "gene")) %>%
@@ -370,10 +372,10 @@ kmeans_heatmaps <- function(norms, trans, genes_to_cluster = NULL,
 #' @param heatprefix A character sequence depicting the prefix for
 #'     heatmaps
 #' @param prefix_title A string to prefix the title of heatmap.
-#' @param highlight_hmap_genes A vector of genes to highlight in the
+#' @param genes_to_highlight A vector of genes to highlight in the
 #'     heatmap.
 #' @param genes_of_interest A list of genes to plot. If NULL, use
-#'     highlight_hmap_genes. If FALSE, do not plot.
+#'     genes_to_highlight. If FALSE, do not plot.
 #' @param width_in A positive integer for the number of inches in the
 #'     plot width.
 #' @param height_in A positive integer for the number of inches in the
@@ -384,25 +386,25 @@ heatmap_with_geneplots <- function(norm_counts, k,
                                    out_dir = "heatmaps_k",
                                    heatprefix = "heatmap",
                                    prefix_title = "",
-                                   highlight_hmap_genes = NULL,
-                                   genes_of_interest = NULL,
+                                   genes, ## highlight and interest
+                                   score_thresh = score_thresh,
                                    width_in = 6, height_in = 6) {
     ## normalised counts should be in the correct sample order already
     options(repr.plot.height = height_in, repr.plot.width = width_in)
     if (!dir.exists(out_dir)) { dir.create(out_dir) }
-    if (is.null(highlight_hmap_genes)) {
+    if (is.null(genes$highlight)) {
         ## If no genes given, show top N
         top_genes <- head(names(sort(rowMeans(norm_counts),
                                      decreasing = TRUE)), 30)
         top_title <- paste0(nrow(norm_counts), " DE genes, top ",
                             length(top_genes), " highlighted")
     } else {
-        top_genes <- highlight_hmap_genes
+        top_genes <- genes$highlight
         top_title <- paste0(nrow(norm_counts), " DE genes, ",
                             length(top_genes), " highlighted")
     }
-    if (is.null(genes_of_interest)) {
-        genes_of_interest <- list(topgenes = top_genes)
+    if (is.null(genes$interest)) {
+        genes$interest <- list(topgenes = top_genes)
     }
     scale_mat <- t(scale(t(norm_counts)))
     scale_mat <- scale_mat[complete.cases(scale_mat), ] ## Remove 0s
@@ -419,15 +421,17 @@ heatmap_with_geneplots <- function(norm_counts, k,
               rownames_to_column("gene"),
               save_scale)
     message("     - Saved Scale: ", save_norm)
-    if (genes_of_interest != FALSE) {
+    if (!is.null(genes$interest)) {
         do_gene_plots(norm_counts, scale_mat,
-                      genes_of_interest, out_dir, "TEST")
+                      score_thresh = score_thresh,
+                      genes$interest, out_dir, "TEST")
     }
     return(list(clusters = cluster_assignments, scaled = scale_mat))
 }
 
 
 do_gene_plots <- function(norm_counts, scale_mat,
+                          score_thresh, 
                           genes_of_interest, out_dir, mess) {
     ## Conversion to long table needs to happen here
     long_norm <- norm_counts %>%
@@ -441,10 +445,12 @@ do_gene_plots <- function(norm_counts, scale_mat,
                      values_to = "value")
 
     gene_clusters_by_score(long_norm,
+                           score_thresh = score_thresh,
                            out_dir = file.path(
                                out_dir, "gene_cluster_norm"))
     message("     - Plotting genes Norm: ", mess)
     gene_clusters_by_score(long_scale,
+                           score_thresh = score_thresh,
                            out_dir = file.path(
                                out_dir, "gene_cluster_scale"))
     message("     - Plotting genes Scaled : ", mess)
@@ -505,7 +511,7 @@ single_kmeans_heatmap <- function(scale_mat, k, top_genes,
         column_names_rot = 45, row_names_gp = gpar(fontsize = 4))
 
     hm_now_drawn <- draw(hm_now)
-    cluster_assignments <- do_cluster_assignments(hm_now_drawn, scale_mat)
+    cluster_assignments <- cluster_assignments(hm_now_drawn, scale_mat)
     ## Unite cluster assignments with Norm, Scaled, and Pvalue
     output_prefix <- file.path(out_dir,
                                paste0(heatprefix, ".k", k, "."))
@@ -540,15 +546,15 @@ single_kmeans_heatmap <- function(scale_mat, k, top_genes,
 better_pheatmap <- function(ph) {
     lwdd <- 2
     message("-[better_pheatmap]-")
-    if (inherits(ph) == "Heatmap") {        ## ComplexHeatmap
+    if (inherits(ph) == "Heatmap") { ## ComplexHeatmap
         ph <- grid.grabExpr(draw(ph))
         hmaps <- ph$children
-        for (hm in names(hmaps)) {            ## Get all Rects
+        for (hm in names(hmaps)) { ## Get all Rects
             rects <- names(ph$children[[hm]]$children)
-            if (length(rects) > 0) { ##rects = names(ph$children[[hm]]$children)
-                for (rr in rects) {  ## Check for rects with tabular data
+            if (length(rects) > 0) { ## rects = names(ph$children[[hm]]$children)
+                for (rr in rects) { ## Check for rects with tabular data
                     hasdim <- dim(ph$children[[hm]]$
-                                  children[[rr]]$gp$fill)
+                        children[[rr]]$gp$fill)
                     if (!is.null(hasdim)) {
                         ph$children[[hm]]$children[[rr]]$gp$col <-
                             ph$children[[hm]]$children[[rr]]$gp$fill
@@ -571,11 +577,12 @@ better_pheatmap <- function(ph) {
         return(ph)
     } else {
         ## PHEATMAP
-        grob_classes <- map(ph$gtable$grobs, class)  ## Extract the right grob
+        grob_classes <- map(ph$gtable$grobs, class) ## Extract the right grob
         idx_grob <- which(
-            map_lgl(grob_classes, function(cl) 'gTree' %in% cl))[1]
+            map_lgl(grob_classes, function(cl) "gTree" %in% cl)
+        )[1]
         grob_names <- names(ph$gtable$grobs[[idx_grob]]$children)
-        idx_rect <- grob_names[grep('rect', grob_names)][1]
+        idx_rect <- grob_names[grep("rect", grob_names)][1]
         ## Remove borders around cells
         ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$col <-
             ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$fill
