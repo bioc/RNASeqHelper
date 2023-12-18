@@ -142,7 +142,7 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 }
 
 
-getTopGenes <- function(top_ng, prefix) {
+getTopGenes <- function(dsqres, top_ng, outdir, prefix) {
     tgenes <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                head(top_ng))$gene
     write_tsv(data.frame(tgenes = tgenes),
@@ -196,8 +196,10 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 
     norm_counts <- counts(ddsObj, normalized = TRUE)
 
-    top_genes_tocluster <- getTopGenes(top_ngenes_tocluster, "clustered_genes.top")
-    top_genes_tohighlight <- getTopGenes(top_ngenes_tohighlight, "volcano_genes.tophighlight")
+    top_genes_tocluster <- getTopGenes(dsqres, top_ngenes_tocluster,
+                                       outdir, "clustered_genes.top")
+    top_genes_tohighlight <- getTopGenes(dsqres, top_ngenes_tohighlight,
+                                         outdir, "volcano_genes.tophighlight")
 
     fancyschmancy(dsqres, top_genes_tohighlight, plot_title, outdir)
 
