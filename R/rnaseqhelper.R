@@ -228,38 +228,6 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 }
 
 
-do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir) {
-    ## Volcano Plots
-    p1 <- volcano_plot(dsqres, top_genes_tohighlight, plot_title,
-                       curve = list(sd = 0.3, sc = 60, offset = 10),
-                       curve_show = FALSE)
-    ## Volcano Plots zoomed in
-    p2 <- volcano_plot(
-        dsqres %>%
-        filter(abs(.data[["log2FoldChange"]]) < .data[["lFC_zoom"]] &
-               .data[["mLog10Padj"]] < .data[["pAdj_zoom"]]),
-        top_genes_tohighlight, paste0(plot_title, " (zoomed)"),
-        curve = list(sd = 0.25, sc = 5, offset = 8), ylim = c(0,22),
-        curve_show = FALSE)
-
-    hmaps <- wrap_plots(list(p1, p2), ncol = 1, guides = "collect") &
-        theme_bw() + theme(legend.position = "none")
-
-    volcano_svg <- file.path(outdir, "volcano_pairwise.svg")
-    deseq2_out <- file.path(outdir, "deseq2_results.tsv")
-
-    svg(volcano_svg, width = 8, height = 9)
-    plot(hmaps)
-    dev.off()
-    message("Saved Volcano: ", volcano_svg)
-
-    dsqres %>% mutate(isTopN.gene = .data[["gene"]] %in%
-                          top_genes_tohighlight) %>% write_tsv(deseq2_out)
-    message("Saved DESeq2 Results: ", deseq2_out)
-}
-
-
-
 do_kmeans <- function(norm_counts, transformed_counts,
                       genes, sample_columns,
                       score_thresh,
@@ -636,6 +604,69 @@ high_quality_genes <- function(sam_mat,
             as.integer(100 * length(drop_genes) / length(res)), "%)")
     return(keep_genes)
 }
+
+
+#' @title Do volcano plots
+#' @description Generate General and Zoomed volcano plots
+#' @param dsqres A DESeq2 Result object
+#' @param top_genes_tohighlight A vector of genes to highlight in the
+#'     volcano plots
+#' @param plot_title A string depicting the title of the gplots
+#' @param outdir An output directory path fro the plots
+#' @param volcano_params A list of two components: "global" and
+#'     "zoomed" each with "curve" and "curve_show" components
+#'     describing the curve to fit to the volcano plots by `sd`
+#'     (standard deviation from center mean), `sc` vertical scale
+#'     factor, `offset` vertical offset. Extra params for the `zoomed`
+#'     component are `ylim`, `padj` an upper limit on the adjusted
+#'     p-value, `lfc` and an upper-limit on the log2 fold change. If
+#'     `curve_show` is set to FALSE in either `global` or `zoomed`
+#'     then no curve is shown.
+do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
+                        volcano_params = NULL) {
+    if (is.null(volcano_params)) {
+        volcano_params <- list(
+            global = list(
+                curve = list(sd = 0.3, sc = 60, offset = 10),
+                curve_show = FALSE
+            ),
+            zoomed = list(
+                curve = list(sd = 0.25, sc = 5, offset = 8), ylim = c(0, 22),
+                curve_show = FALSE, padj = 20, lfc = 1.5
+            )
+        )
+    }
+    ## Volcano Plots
+    p1 <- volcano_plot(dsqres, top_genes_tohighlight, plot_title,
+                       curve = volcano_params$global$curve,
+                       curve_show = volcano_params$global$curve_show)
+    ## Volcano Plots zoomed in
+    p2 <- volcano_plot(
+        dsqres %>%
+            filter(abs(.data[["log2FoldChange"]]) < volcano_params$zoomed$lfc &
+                   .data[["mLog10Padj"]] < volcano_params$zoomed$padj),
+        top_genes_tohighlight, paste0(plot_title, " (zoomed)"),
+        curve = volcano_params$zoomed$curve,
+        ylim = volcano_params$zoomed$ylim,
+        curve_show = volcano_params$zoomed$curve_show
+    )
+
+    hmaps <- wrap_plots(list(p1, p2), ncol = 1, guides = "collect") &
+        theme_bw() + theme(legend.position = "none")
+
+    volcano_svg <- file.path(outdir, "volcano_pairwise.svg")
+    deseq2_out <- file.path(outdir, "deseq2_results.tsv")
+
+    svg(volcano_svg, width = 8, height = 9)
+    plot(hmaps)
+    dev.off()
+    message("Saved Volcano: ", volcano_svg)
+
+    dsqres %>% mutate(isTopN.gene = .data[["gene"]] %in%
+                          top_genes_tohighlight) %>% write_tsv(deseq2_out)
+    message("Saved DESeq2 Results: ", deseq2_out)
+}
+
 
 #' @title Produce a Volcano Plot
 #' @description Generates a volcano plot from the contrast of a DESeq2
