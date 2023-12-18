@@ -201,7 +201,7 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
     top_genes_tohighlight <- getTopGenes(dsqres, top_ngenes_tohighlight,
                                          outdir, "volcano_genes.tophighlight")
 
-    fancyschmancy(dsqres, top_genes_tohighlight, plot_title, outdir)
+    do_volcanos(dsqres, top_genes_tohighlight, plot_title, outdir)
 
     sample_columns <- c(grep(paste0("^", numer), colnames(norm_counts),
                              value = TRUE),
@@ -210,7 +210,7 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 
     zzz <- lapply(kmeans, function(kmk) {
         message("[Running k=", kmk, "]")
-        loopfunc(
+        do_kmeans(
             norm_counts, transformed_counts,
             top_genes_tocluster, top_genes_tohighlight,
             sample_columns, genes_of_interest, dsqres, kmk, outdir
@@ -221,7 +221,7 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 }
 
 
-fancyschmancy <- function(dsqres, top_genes_tohighlight, plot_title, outdir) {
+do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir) {
     ## Volcano Plots
     p1 <- volcano_plot(dsqres, top_genes_tohighlight, plot_title,
                        curve = list(sd = 0.3, sc = 60, offset = 10),
@@ -253,10 +253,10 @@ fancyschmancy <- function(dsqres, top_genes_tohighlight, plot_title, outdir) {
 
 
 
-loopfunc <- function(norm_counts, transformed_counts,
-                     top_genes_tocluster, top_genes_tohighlight,
-                     sample_columns, genes_of_interest,
-                     dsqres, kmk, out_dir) {
+do_kmeans <- function(norm_counts, transformed_counts,
+                      top_genes_tocluster, top_genes_tohighlight,
+                      sample_columns, genes_of_interest,
+                      dsqres, kmk, out_dir) {
     ## Pairwise Heatmap of Normalised and Transformed Counts
     kmeans_heatmaps(
         norm_counts, transformed_counts,
@@ -420,14 +420,15 @@ heatmap_with_geneplots <- function(norm_counts, k,
               save_scale)
     message("     - Saved Scale: ", save_norm)
     if (genes_of_interest != FALSE) {
-        dogene_plots(norm_counts, scale_mat, genes_of_interest, out_dir, "TEST")
+        do_gene_plots(norm_counts, scale_mat,
+                      genes_of_interest, out_dir, "TEST")
     }
     return(list(clusters = cluster_assignments, scaled = scale_mat))
 }
 
 
-dogene_plots <- function(norm_counts, scale_mat,
-                         genes_of_interest, out_dir, mess) {
+do_gene_plots <- function(norm_counts, scale_mat,
+                          genes_of_interest, out_dir, mess) {
     ## Conversion to long table needs to happen here
     long_norm <- norm_counts %>%
         rownames_to_column("gene") %>%
@@ -810,13 +811,13 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
                 message("no genes found for: ", glist_name)
                 return(NULL)
             }
-            pgene_norm <- dothis_plot(
+            pgene_norm <- single_gene_plot(
                 norm_long, genes_found, glist_name,
                 "Log10 Normalised Expression",
                 "Normalised Expression Time Plots grouped by Genes of Interest",
                 out_dir, outprefix, ".normalised.svg", TRUE
             )
-            pgene_scale <- dothis_plot(
+            pgene_scale <- single_gene_plot(
                 scale_long, genes_found, glist_name,
                 "Scaled Expression",
                 "Scaled Expression Time Plots grouped by Genes of Interest",
@@ -828,9 +829,9 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
 }
 
 
-dothis_plot <- function(long_data, genes_found, glist_name,
-                        ylab_text, title_text,
-                        out_dir, outprefix, filesuffix, scaley10) {
+single_gene_plot <- function(long_data, genes_found, glist_name,
+                             ylab_text, title_text,
+                             out_dir, outprefix, filesuffix, scaley10) {
     time_breaks <- sort(unique(sort(long_data$time)))
 
     pgene <- long_data %>%
