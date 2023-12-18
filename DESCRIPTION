@@ -28,7 +28,7 @@ Imports:
     dplyr (>= 1.1.3), readr (>= 2.1.4), tibble (>= 3.2.1),
     ggplot2 (>= 3.4.4), ComplexHeatmap (>= 2.16.0), ggrepel (>= 0.9.4),
     purrr (>= 1.0.2), SummarizedExperiment (>= 1.30.2), tidyr (>= 1.3.0),
-    grDevices, graphics, grid, stats, utils
+    grDevices, graphics, grid, stats, utils, svglite (>= 2.1.3)
 Suggests:
     BiocStyle,
     knitr,

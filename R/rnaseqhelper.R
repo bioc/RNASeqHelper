@@ -218,14 +218,12 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                              value = TRUE),
                         grep(paste0("^", denom), colnames(norm_counts),
                              value = TRUE))
-
     genes = list(
         cluster = top_genes_tocluster,
         highlight = top_genes_tohighlight,
-        interest = genes_of_interest
+        interest = genes_of_interest,
         score_thresh = score_thresh
     )
-
     zzz <- lapply(kmeans_list, function(k) {
         message("[Running k=", k, "]")
         do_kmeans(
@@ -236,7 +234,6 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
     NULL
     message("Finished Analysis: ", date())
 }
-
 
 #' @title Perform K-means Pairwise and Global
 #' @description Produce two K-means plots where one contains pairwise
@@ -270,7 +267,7 @@ do_kmeans <- function(norm_counts, transformed_counts,
         genes = genes,
         sample_columns = sample_columns,
         dsqres, k,
-        out_dir = file.path(out_dir, paste0("kmeans", kmk)),
+        out_dir = file.path(out_dir, paste0("kmeans", k)),
         heatprefix = "heatmap_pairwise",
         plot_title = "Heatmap Pairwise")
 
@@ -286,11 +283,10 @@ do_kmeans <- function(norm_counts, transformed_counts,
         genes = genes,
         sample_columns = NULL,
         dsqres, k,
-        out_dir = file.path(out_dir, paste0("kmeans", kmk)),
+        out_dir = file.path(out_dir, paste0("kmeans", k)),
         heatprefix = "heatmap_all",
         plot_title = "Heatmap All")
 }
-
 
 #' @title Nice K-means Heatmap
 #' @description Produce a nice K-means clustered heatmap for both
@@ -313,8 +309,8 @@ do_kmeans <- function(norm_counts, transformed_counts,
 #' @param out_dir String depicting the output directory to place
 #'     tables and plots.
 #' @param heatprefix String to prefix heatmap plot filenames
-#' @param plot_title String depicting title to embed into plot,
-kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest, score_thresh
+#' @param plot_title String depicting title to embed into plot
+kmeans_heatmaps <- function(norms, trans, genes,
                             sample_columns = NULL,
                             dsqres, k, out_dir, heatprefix, plot_title) {
     if (is.null(genes$cluster)) {
@@ -557,15 +553,15 @@ better_pheatmap <- function(ph) {
         hmaps <- ph$children
         for (hm in names(hmaps)) { ## Get all Rects
             rects <- names(ph$children[[hm]]$children)
-            if (length(rects) > 0) { ## rects = names(ph$children[[hm]]$children)
+            if (length(rects) > 0) {
+                ## rects = names(ph$children[[hm]]$children)
                 for (rr in rects) { ## Check for rects with tabular data
                     hasdim <- dim(ph$children[[hm]]$
                         children[[rr]]$gp$fill)
                     if (!is.null(hasdim)) {
                         ph$children[[hm]]$children[[rr]]$gp$col <-
                             ph$children[[hm]]$children[[rr]]$gp$fill
-                        ph$children[[hm]]$
-                            children[[rr]]$gp$lwd <- lwdd
+                        ph$children[[hm]]$children[[rr]]$gp$lwd <- lwdd
                     }
                 }
             } else {
@@ -712,7 +708,6 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
     message("Saved DESeq2 Results: ", deseq2_out)
 }
 
-
 #' @title Produce a Volcano Plot
 #' @description Generates a volcano plot from the contrast of a DESeq2
 #'     analysis with added curves for graphic effect.
@@ -730,42 +725,55 @@ volcano_plot <- function(dsqres, degenes, title,
                          ylim = NULL) {
     options(repr.plot.height = 12, repr.plot.width = 12)
     ## Extract relevant info from DESeq results
-    ana <- dsqres %>% select(c(.data[["gene"]], .data[["log2FoldChange"]],
-                               .data[["padj"]])) %>%
+    ana <- dsqres %>%
+        select(c(
+            .data[["gene"]], .data[["log2FoldChange"]],
+            .data[["padj"]]
+        )) %>%
         mutate(mLog10Padj = -log10(.data[["padj"]])) %>%
         arrange(desc(.data[["mLog10Padj"]]))
 
     cust_fun <- function(x, sd = 0.15, sc = 10, offset = 1) {
         offset + dnorm(x, mean = 0, sd = sd) * sc
     }
-    cfun <- function(x) {     ## The slope function -- highlight these genes
-        return(cust_fun(x, sd = curve$sd * curve_scale,
-                        sc = curve$sc * curve_scale, offset = curve$offset))
+    cfun <- function(x) { ## The slope function -- highlight these genes
+        return(cust_fun(x,
+            sd = curve$sd * curve_scale,
+            sc = curve$sc * curve_scale, offset = curve$offset
+        ))
     }
     ## We highlight genes in the zoomed zone fitting the curve, but
     ## the main DE genes are shown as shapes and highlighted
-    red <- ana %>% mutate(isTopN = .data[["gene"]] %in% degenes) %>%
+    red <- ana %>%
+        mutate(isTopN = .data[["gene"]] %in% degenes) %>%
         mutate(highlight = .data[["isTopN"]] |
-                   (.data[["mLog10Padj"]] >
-                    cust_fun(.data[["log2FoldChange"]])))
+            (.data[["mLog10Padj"]] >
+                cust_fun(.data[["log2FoldChange"]])))
 
-    max_x <- max(abs(ana$log2FoldChange)) + 0.05 ##symmetry
-    plot1 <- red %>% ggplot(aes_string(x = "log2FoldChange", y = "mLog10Padj",
-                                       colour = "highlight", shape = "isTopN",
-                                       label = "gene")) +
+    max_x <- max(abs(ana$log2FoldChange)) + 0.05 ## symmetry
+    plot1 <- red %>% ggplot(aes_string(
+        x = "log2FoldChange", y = "mLog10Padj",
+        colour = "highlight", shape = "isTopN",
+        label = "gene"
+    )) +
         geom_point() +
-        scale_colour_manual(values = c("TRUE"  = "red", "FALSE" = "grey")) +
-        scale_shape_manual(values =  c("TRUE"  =  5, "FALSE" = 19)) +
-        scale_x_continuous(limits = c(-max_x,max_x), breaks = waiver(),
-                           n.breaks = 10) +
-        geom_label_repel(data = red %>% filter(.data[["highlight"]] == TRUE) %>%
-                             head(15), box.padding = 0.5, max.overlaps = 30,
-                         colour = "black") + ggtitle(title)
+        scale_colour_manual(values = c("TRUE" = "red", "FALSE" = "grey")) +
+        scale_shape_manual(values = c("TRUE" = 5, "FALSE" = 19)) +
+        scale_x_continuous(
+            limits = c(-max_x, max_x), breaks = waiver(),
+            n.breaks = 10
+        ) +
+        geom_label_repel(
+            data = red %>% filter(.data[["highlight"]] == TRUE) %>%
+                head(15), box.padding = 0.5, max.overlaps = 30,
+            colour = "black"
+        ) +
+        ggtitle(title)
     if (curve_show) {
         plot1 <- plot1 + geom_function(fun = cfun, n = 100, colour = "blue")
     }
     if (!is.null(ylim)) {
-        plot1 <- plot1 + scale_y_continuous(limits=ylim)
+        plot1 <- plot1 + scale_y_continuous(limits = ylim)
     }
     return(plot1)
 }
@@ -774,8 +782,8 @@ volcano_plot <- function(dsqres, degenes, title,
 #' @description Generate cluster gene plots for various score
 #'     thresholds
 #' @param tab A dataframe with long plotting data containing at least
-#'     the columns `cluster', `condition', `value', and `time'. It can
-#'     take normalised or scaled values as input.
+#'     the columns `gene`, `cluster', `condition', `value', `time',
+#'     and 'score'. It can take normalised or scaled values as input.
 #' @param score_thresh Vector of numerics depicting cluster score
 #'     thresholds to filter for high quality genes in each cluster
 #'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
@@ -785,6 +793,16 @@ volcano_plot <- function(dsqres, degenes, title,
 #'     different score thresholds. This plot is also saved to the
 #'     `out_dir' directory under the pattern
 #'     "gene_plots-k*_montage.svg"
+#' @examples
+#' tab <- data.frame(
+#'     gene = c("g1", "g2", "g3", "g4", "g5", "g6"),
+#'     cluster = c(1, 1, 1, 2, 2, 2),
+#'     condition = c("red", "red", "red", "green", "green", "green"),
+#'     value = c(5, 10, 15, 5, 20, 20),
+#'     time = c(5, 5, 10, 10, 20, 20),
+#'     score = c(0.5, 0.9, 0.9, 0.9, 0.9, 0.5)
+#' )
+#' plot = gene_clusters_by_score(tab, c(0.5, 0.9), out_dir = "/tmp")
 #' @export
 gene_clusters_by_score <- function(tab,
                                    score_thresh = c(0, 0.5, 0.9, 0.99),
@@ -805,7 +823,7 @@ gene_clusters_by_score <- function(tab,
 
     ggsave(plot = rplot, filename = paste0(newoutprefix,
                                            "_montage.svg"),
-           dpi = 800, width = 15, height = 15, units = "inches")
+           dpi = 800, width = 15, height = 15, units = "in")
 
     return(rplot)
 }
@@ -856,7 +874,7 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
                                      num_clusters(tab),
                                      "-score", score_thresh))
     ggsave(plot = p1, filename = paste0(newoutprefix, ".svg"),
-           dpi = 800, width = 10, height = 10, units = "inches")
+           dpi = 800, width = 10, height = 10, units = "in")
     tabn %>% write_tsv(paste0(newoutprefix, ".tsv"))
     return(p1)
 }
@@ -952,7 +970,7 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
                      )
         ),
         dpi = 800, width = pdims$w * 2, height = pdims$h * 1.5,
-        units = "inches"
+        units = "in"
     )
     return(pgene)
 }
