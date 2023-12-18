@@ -166,13 +166,21 @@ top_n_genes <- function(dsqres, top_ng, outdir, prefix) {
 #'     log10 padj values to take. Default is 2000.
 #' @param top_ngenes_tohighlight A positive integer. How many of the
 #'     top log10 padj values to label in the plots. Default is 50.
+#' @param score_thresh Vector of numerics depicting cluster score
+#'     thresholds to filter for high quality genes in each cluster
+#'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
 #' @param genes_of_interest A named list of gene groups to plot in
 #'     ribbot plots. If NULL
-#' @param lFC_zoom A number to depict the Log2FC threshold of the
-#'     zoomed plot.
-#' @param pAdj_zoom A number to depict the adjusted p-value threshold
-#'     of the zoomed plot.
-#' @param kmeans A list? of positive integers to do k-means
+#' @param volcano_params A list of two components: "global" and
+#'     "zoomed" each with "curve" and "curve_show" components
+#'     describing the curve to fit to the volcano plots by `sd`
+#'     (standard deviation from center mean), `sc` vertical scale
+#'     factor, `offset` vertical offset. Extra params for the `zoomed`
+#'     component are `ylim`, `padj` an upper limit on the adjusted
+#'     p-value, `lfc` and an upper-limit on the log2 fold change. If
+#'     `curve_show` is set to FALSE in either `global` or `zoomed`
+#'     then no curve is shown.
+#' @param kmeans_list A list of positive integers to do k-means
 #' @param out_dirprefix A character prefix outlining the directory and
 #'     basename in which plots and tables will be deployed.
 #' @return Void. Plots are deposited to the output directory.
@@ -183,7 +191,8 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                                   top_ngenes_tohighlight = 50,
                                   score_thresh, genes_of_interest = NULL,
                                   volcano_params,
-                                  kmeans = 2, out_dirprefix = ".") {
+                                  kmeans_list = c(2,5,8,16),
+                                  out_dirprefix = ".") {
     message("Started Analysis: ", date())
     plot_title <- paste0(numer, " vs ", denom)
     outdir <- file.path(out_dirprefix, tolower(gsub("[^A-Za-z0-9]", "_",
@@ -214,13 +223,14 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
         cluster = top_genes_tocluster,
         highlight = top_genes_tohighlight,
         interest = genes_of_interest
+        score_thresh = score_thresh
     )
 
-    zzz <- lapply(kmeans, function(kmk) {
-        message("[Running k=", kmk, "]")
+    zzz <- lapply(kmeans_list, function(k) {
+        message("[Running k=", k, "]")
         do_kmeans(
-            norm_counts, transformed_counts, genes, sample_columns, dsqres,
-            kmk, outdir
+            norm_counts, transformed_counts, genes, sample_columns,
+            dsqres, k, outdir
         )
     })
     NULL
@@ -228,17 +238,38 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 }
 
 
+#' @title Perform K-means Pairwise and Global
+#' @description Produce two K-means plots where one contains pairwise
+#'     comparisons between samples of interest, and one contains the
+#'     same pairwise comparisons but extended over all samples.
+#' @param norm_counts a matrix of normalized counts
+#' @param transformed_counts a matrix of transformed counts, VST or
+#'     other produced by DESeq2
+#' @param genes A list with at least 4 components: `cluster`, a vector
+#'     of genes to use for clustering, `highlight`, a vector of genes
+#'     to highlight in the heatmap; `interest`, a list of genes to
+#'     plot, where if NULL, use `highlight`, and if FALSE do not use;
+#'     `score_thresh` a vector of numerics depicting cluster score
+#'     thresholds to filter for high quality genes in each cluster
+#'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
+#' @param sample_columns a vector of sample names. If NULL (the
+#'     default), then use all samples
+#' @param dsqres the output of the DESeq2 function \code{results},
+#'     usually called after performing a contrast.
+#' @param k A positive integer to do k-means.
+#' @param out_dir String depicting the output directory to place
+#'     tables and plots.
+#' @return None. Produces only tables and plots in the output
+#'     directory.
 do_kmeans <- function(norm_counts, transformed_counts,
                       genes, sample_columns,
-                      score_thresh,
-                      dsqres, kmk, out_dir) {
+                      dsqres, k, out_dir) {
     ## Pairwise Heatmap of Normalised and Transformed Counts
     kmeans_heatmaps(
         norm_counts, transformed_counts,
         genes = genes,
         sample_columns = sample_columns,
-        score_thresh = score_thresh,
-        dsqres, kmk,
+        dsqres, k,
         out_dir = file.path(out_dir, paste0("kmeans", kmk)),
         heatprefix = "heatmap_pairwise",
         plot_title = "Heatmap Pairwise")
@@ -254,7 +285,7 @@ do_kmeans <- function(norm_counts, transformed_counts,
         norm_counts, transformed_counts,
         genes = genes,
         sample_columns = NULL,
-        dsqres, kmk,
+        dsqres, k,
         out_dir = file.path(out_dir, paste0("kmeans", kmk)),
         heatprefix = "heatmap_all",
         plot_title = "Heatmap All")
@@ -267,24 +298,25 @@ do_kmeans <- function(norm_counts, transformed_counts,
 #' @param norms a matrix of normalized counts
 #' @param trans a matrix of transformed counts, VST or other produced
 #'     by DESeq2.
-#' @param genes_to_cluster a vector of gene names. If NULL (the
-#'     default), then cluster all genes.
 #' @param sample_columns a vector of sample names. If NULL (the
 #'     default), then use all samples
-#' @param genes_to_highlight A vector of genes to highlight in the
-#'     heatmap.
-#' @param genes_of_interest A list of gene groups to highlight in
-#'     ribbon plots.
+#' @param genes A list with at least 4 components: `cluster`, a vector
+#'     of genes to use for clustering, `highlight`, a vector of genes
+#'     to highlight in the heatmap; `interest`, a list of genes to
+#'     plot, where if NULL, use `highlight`, and if FALSE do not use;
+#'     `score_thresh` a vector of numerics depicting cluster score
+#'     thresholds to filter for high quality genes in each cluster
+#'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
 #' @param dsqres the output of the DESeq2 function \code{results},
 #'     usually called after performing a contrast.
-#' @param kmeans A list? of positive integers to do k-means.
+#' @param k A positive integer to do k-means.
 #' @param out_dir String depicting the output directory to place
 #'     tables and plots.
 #' @param heatprefix String to prefix heatmap plot filenames
 #' @param plot_title String depicting title to embed into plot,
-kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest
-                            sample_columns = NULL, score_thresh,
-                            dsqres, kmeans, out_dir, heatprefix, plot_title) {
+kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest, score_thresh
+                            sample_columns = NULL,
+                            dsqres, k, out_dir, heatprefix, plot_title) {
     if (is.null(genes$cluster)) {
         message(" - Using all genes in normalised matrix for clustering")
         genes$cluster <- rownames(norms)
@@ -299,7 +331,7 @@ kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest
     ## Heatmaps
     message("   - Using normalized counts")
     res_dsqres <- heatmap_with_geneplots(
-        norms[genes$cluster, sample_columns], k = kmeans, out_dir = out_dir,
+        norms[genes$cluster, sample_columns], k = k, out_dir = out_dir,
         heatprefix = heatprefix, prefix_title = paste0(plot_title, " :"),
         genes = genes
     )
@@ -311,11 +343,10 @@ kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest
     if (!is.null(trans)) {       ## Heatmaps using Corrected Normalized Counts
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
-            trans[genes$cluster, sample_columns], k = kmeans,
+            trans[genes$cluster, sample_columns], k = k,
             out_dir = out_dir,
             heatprefix = paste0(heatprefix, ".vst_corrected"),
             prefix_title = paste0(plot_title, " (vst corrected) :"),
-            score_thresh = score_thresh,
             genes = genes)
         ## Merge Trans cluster
         dsq_dsq <- left_join(dsq_dsq, res_dsqres_trans$clusters,
@@ -326,9 +357,9 @@ kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest
             select(-.data[["cluster"]])
     }
     save_cluster <- file.path(out_dir, paste0("deseq2.results.cluster.k",
-                                              kmeans, ".tsv"))
+                                              k, ".tsv"))
     write_tsv(dsq_dsq, save_cluster)
-    message("   - Storing Results k", kmeans, ":", save_cluster)
+    message("   - Storing Results k", k, ":", save_cluster)
 }
 
 #' @title Heatmap with Gene plots
@@ -340,10 +371,13 @@ kmeans_heatmaps <- function(norms, trans, genes, ## cluster, highlight, interest
 #' @param heatprefix A character sequence depicting the prefix for
 #'     heatmaps
 #' @param prefix_title A string to prefix the title of heatmap.
-#' @param genes_to_highlight A vector of genes to highlight in the
-#'     heatmap.
-#' @param genes_of_interest A list of genes to plot. If NULL, use
-#'     genes_to_highlight. If FALSE, do not plot.
+#' @param genes A list with at least 3 components: `highlight`, a
+#'     vector of genes to highlight in the heatmap; `interest`, a list
+#'     of genes to plot, where if NULL, use `highlight`, and if FALSE
+#'     do not use; `score_thresh` a vector of numerics depicting
+#'     cluster score thresholds to filter for high quality genes in
+#'     each cluster before plotting. Default is \code{c(0, 0.5, 0.9,
+#'     0.99)}
 #' @param width_in A positive integer for the number of inches in the
 #'     plot width.
 #' @param height_in A positive integer for the number of inches in the
@@ -354,8 +388,7 @@ heatmap_with_geneplots <- function(norm_counts, k,
                                    out_dir = "heatmaps_k",
                                    heatprefix = "heatmap",
                                    prefix_title = "",
-                                   genes, ## highlight and interest
-                                   score_thresh = score_thresh,
+                                   genes, ## highlight, interest, score_thresh
                                    width_in = 6, height_in = 6) {
     ## normalised counts should be in the correct sample order already
     options(repr.plot.height = height_in, repr.plot.width = width_in)
@@ -391,8 +424,8 @@ heatmap_with_geneplots <- function(norm_counts, k,
     message("     - Saved Scale: ", save_norm)
     if (!is.null(genes$interest)) {
         do_gene_plots(norm_counts, scale_mat,
-                      score_thresh = score_thresh,
-                      genes$interest, out_dir, "TEST")
+                      score_thresh = genes$score_thresh,
+                      genes_of_interest = genes$interest, out_dir, "TEST")
     }
     return(list(clusters = cluster_assignments, scaled = scale_mat))
 }
@@ -590,7 +623,7 @@ better_pheatmap <- function(ph) {
 #'     paste0("C", 1:10)
 #' ))
 #' keep <- high_quality_genes(sam_mat, 10, 7, "/tmp")
-#' names(keep) === paste0("G", 7:10)
+#' names(keep) == paste0("G", 7:10)
 #' @export
 high_quality_genes <- function(sam_mat,
                                min_occur = 3,
