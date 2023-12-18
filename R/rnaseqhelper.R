@@ -430,10 +430,15 @@ do_gene_plots <- function(norm_counts, scale_mat,
     message("     - Plotting genes list: ", mess)
 }
 
-## Get cluster assignments
-do_cluster_assignments <- function(hm_now_drawn, scale_mat) {
+#' @title Cluster Assignments
+#' @description Get the cluster assignment for all genes
+#' @param hm_now_drawn A ComplexHeatmap object invoked with `draw'.
+#' @param matobj A matrix with genes as rownames.
+#' @return A two column data frame of Gene and Cluster in ascending
+#'     order of cluster number.
+cluster_assignments <- function(hm_now_drawn, matobj) {
     cluster_list <- lapply(row_order(hm_now_drawn),
-                           function(x) rownames(scale_mat)[x])
+                           function(x) rownames(matobj)[x])
     cluster_table <- do.call(
         rbind, lapply(names(cluster_list),
                       function(n)
@@ -579,6 +584,13 @@ better_pheatmap <- function(ph) {
 #' @return A vector of strings depicting a list of high quality genes.
 #'     A table of rowSums is written to a file matching
 #'     "smallestGroup*-detected*-keep_genes".
+#' @examples
+#' sam_mat <- matrix(1:100, nrow = 10, dimnames = list(
+#'     paste0("G", 1:10),
+#'     paste0("C", 1:10)
+#' ))
+#' keep <- high_quality_genes(sam_mat, 10, 7, "/tmp")
+#' names(keep) === paste0("G", 7:10)
 #' @export
 high_quality_genes <- function(sam_mat,
                                min_occur = 3,
