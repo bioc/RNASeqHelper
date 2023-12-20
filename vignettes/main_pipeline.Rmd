@@ -61,10 +61,7 @@ pairwise_hmap_volcano(res$ddsObj,
                       out_dirprefix="test/outputs")
 
 ## Todo gene plots
-
-
 ```
-
 
 ## SessionInfo
 

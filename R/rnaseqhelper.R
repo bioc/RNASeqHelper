@@ -42,6 +42,7 @@
 #' @param gcbs_params list of parameters to override the default
 #'     `gene_clusters_by_score' function. If \code{NULL}, then use the
 #'     default. Contains "genes_of_interest" and "scores".
+#' @param TODO Still need to fix what is passed down at this stage
 rnaseqhelper <- function(tab, phenotype_data,
                          keep_params = NULL, heat_params = NULL,
                          gcbs_params = NULL) {
