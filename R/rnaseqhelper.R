@@ -218,7 +218,7 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                              value = TRUE),
                         grep(paste0("^", denom), colnames(norm_counts),
                              value = TRUE))
-    genes = list(
+    genes <- list(
         cluster = top_genes_tocluster,
         highlight = top_genes_tohighlight,
         interest = genes_of_interest,
@@ -725,11 +725,8 @@ volcano_plot <- function(dsqres, degenes, title,
                          ylim = NULL) {
     options(repr.plot.height = 12, repr.plot.width = 12)
     ## Extract relevant info from DESeq results
-    ana <- dsqres %>%
-        select(c(
-            .data[["gene"]], .data[["log2FoldChange"]],
-            .data[["padj"]]
-        )) %>%
+    ana <- dsqres %>% select(c(.data[["gene"]], .data[["log2FoldChange"]],
+                               .data[["padj"]])) %>%
         mutate(mLog10Padj = -log10(.data[["padj"]])) %>%
         arrange(desc(.data[["mLog10Padj"]]))
 
@@ -752,23 +749,17 @@ volcano_plot <- function(dsqres, degenes, title,
 
     max_x <- max(abs(ana$log2FoldChange)) + 0.05 ## symmetry
     plot1 <- red %>% ggplot(aes_string(
-        x = "log2FoldChange", y = "mLog10Padj",
-        colour = "highlight", shape = "isTopN",
-        label = "gene"
-    )) +
-        geom_point() +
+                         x = "log2FoldChange", y = "mLog10Padj",
+                         colour = "highlight", shape = "isTopN",
+                         label = "gene")) + geom_point() +
         scale_colour_manual(values = c("TRUE" = "red", "FALSE" = "grey")) +
         scale_shape_manual(values = c("TRUE" = 5, "FALSE" = 19)) +
-        scale_x_continuous(
-            limits = c(-max_x, max_x), breaks = waiver(),
-            n.breaks = 10
-        ) +
-        geom_label_repel(
-            data = red %>% filter(.data[["highlight"]] == TRUE) %>%
-                head(15), box.padding = 0.5, max.overlaps = 30,
-            colour = "black"
-        ) +
-        ggtitle(title)
+        scale_x_continuous(limits = c(-max_x, max_x), breaks = waiver(),
+                           n.breaks = 10) +
+        geom_label_repel(data = red %>% filter(.data[["highlight"]] == TRUE) %>%
+                             head(15), box.padding = 0.5, max.overlaps = 30,
+                         colour = "black") + ggtitle(title)
+
     if (curve_show) {
         plot1 <- plot1 + geom_function(fun = cfun, n = 100, colour = "blue")
     }
