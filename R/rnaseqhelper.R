@@ -142,12 +142,23 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
     dev.off()
 }
 
-
-top_n_genes <- function(dsqres, top_ng, outdir, prefix) {
+#' @title Top N Genes
+#' @description From a DESeq2 Result extract the top N genes as
+#'     determined by descending order of the minus Log10 Adjusted
+#'     P-value. Write the result to file as well as return it.
+#' @param dsqres the output of the DESeq2 function \code{results},
+#'     usually called after performing a contrast.
+#' @param top_ng A positive integer for the N value of genes to
+#'     extract.
+#' @param out_dir String depicting the output directory to place
+#'     tables and plots.
+#' @param prefix String to act as the prefix filename.
+#' @return A vector of N gene names
+top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
     tgenes <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                head(top_ng))$gene
     write_tsv(data.frame(tgenes = tgenes),
-              file.path(outdir, paste0(prefix, top_ng, ".tsv")))
+              file.path(out_dir, paste0(prefix, top_ng, ".tsv")))
     return(tgenes)
 }
 
@@ -426,7 +437,25 @@ heatmap_with_geneplots <- function(norm_counts, k,
     return(list(clusters = cluster_assignments, scaled = scale_mat))
 }
 
-
+#' @title Perform Gene Plots
+#' @description Perform cluster gene plots for normalised and scaled
+#'     data as well as plotting genes of interest for both.
+#' @param norm_counts a matrix of normalized count data, with genes as
+#'     rows and samples as columns.
+#' @param scale_mat a matrix of scaled count data, with genes as rows
+#'     and samples as columns.
+#' @param score_thresh Vector of numerics depicting cluster score
+#'     thresholds to filter for high quality genes in each cluster
+#'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
+#' @param genes_of_interest A named list of gene vectors. A list of
+#'     genes which are referenced by specific names. Unique plots will
+#'     be generated for list. e.g. list(mygeneset1 = c("Msgn1",
+#'     "Osr1", "Rspo3", "Fgf8", "Wnt3a"), mygeneset2 = c("Mesp1",
+#'     "Foxa2", "Sox17", "Lhx1", "Cer1"))
+#' @param out_dir A string denoting the output directory to store
+#'     plots and tables.
+#' @param mess A string to print during logging messages.
+#' @return None.
 do_gene_plots <- function(norm_counts, scale_mat,
                           score_thresh, 
                           genes_of_interest, out_dir, mess) {
@@ -921,9 +950,22 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
 }
 
 
+#' @title Single Gene Plot
+#' @description Perform a plot of all genes for a single instance of
+#'     long table data and save to file, as well as return the plot.
+#' @param long_data A tibble containing columns: gene, time, condition, value
+#' @param genes_found A vector of gene names
+#' @param glist_name A string for the collective name for said vector of genes
+#' @param ylab_text A string for Y-axis label text
+#' @param title_text A string for the title text
+#' @param out_dir A string denoting the output directory to store
+#'     plots. Default is is "gene_lists".
+#' @param outprefix A string for the filename prefix
+#' @param scaley10 A boolean on whether to scale the Y-axis by log10
+#' @return A ggplot2 object
 single_gene_plot <- function(long_data, genes_found, glist_name,
                              ylab_text, title_text,
-                             out_dir, outprefix, filesuffix, scaley10) {
+                             out_dir, outprefix, scaley10) {
     time_breaks <- sort(unique(sort(long_data$time)))
 
     pgene <- long_data %>%
