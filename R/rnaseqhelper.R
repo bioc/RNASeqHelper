@@ -108,6 +108,7 @@ run_deseq <- function(tab, keep_genes, phenotype_data) {
 #' @param out_dir String depicting the output directory to place
 #'     tables and plots.
 #' @return None. Plots and tables and placed into output directory.
+#' @export
 pca_and_matrices <- function(res, out_dir = "deseq2") {
     ## Initial input matrices
     dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
@@ -961,11 +962,12 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
 #' @param out_dir A string denoting the output directory to store
 #'     plots. Default is is "gene_lists".
 #' @param outprefix A string for the filename prefix
+#' @param filesuffix A string depicting the filename suffix and extension.
 #' @param scaley10 A boolean on whether to scale the Y-axis by log10
 #' @return A ggplot2 object
 single_gene_plot <- function(long_data, genes_found, glist_name,
                              ylab_text, title_text,
-                             out_dir, outprefix, scaley10) {
+                             out_dir, outprefix, filesuffix, scaley10) {
     time_breaks <- sort(unique(sort(long_data$time)))
 
     pgene <- long_data %>%
@@ -997,10 +999,7 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
     ggsave(
         plot = pgene,
         filename = file.path(
-            out_dir, paste0(
-                         outprefix, ".",
-                         glist_name, ".normalised.svg"
-                     )
+            out_dir, paste0(outprefix, ".", glist_name, filesuffix)
         ),
         dpi = 800, width = pdims$w * 2, height = pdims$h * 1.5,
         units = "in"
