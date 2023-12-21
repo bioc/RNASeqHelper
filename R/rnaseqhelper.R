@@ -426,10 +426,16 @@ heatmap_with_geneplots <- function(norm_counts, k,
     }
     scale_mat <- t(scale(t(norm_counts)))
     scale_mat <- scale_mat[complete.cases(scale_mat), ] ## Remove 0s
+
     cluster_assignments <- single_kmeans_heatmap(
         scale_mat, k,
         top_genes, prefix_title, top_title,
         out_dir, heatprefix, width_in, height_in)
+
+    cluster_assignments_scores <- calculate_cluster_corr(
+        cluster_assignments, scale_mat, out_dir, heatprefix
+    )
+
     save_norm <- file.path(out_dir, paste0("k", k, "_norm.tsv"))
     save_scale <- file.path(out_dir, paste0("k", k, "_scale.tsv"))
     write_tsv(as.data.frame(norm_counts) %>%
@@ -444,8 +450,42 @@ heatmap_with_geneplots <- function(norm_counts, k,
                       score_thresh = genes$score_thresh,
                       genes_of_interest = genes$interest, out_dir, "TEST")
     }
-    return(list(clusters = cluster_assignments, scaled = scale_mat))
+    return(list(clusters = cluster_assignments_scores, scaled = scale_mat))
 }
+
+#' @param clust_assign A two-column table of 'gene' and 'cluster'.
+#' @param scale_mat A matrix with genes as rows and samples as columns.
+#' @param i A positive integer representing a cluster number.
+calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
+    genes_in_i <- clust_assign[clust_assign$cluster == i, ]$gene
+    matrix_in_i <- scale_mat[genes_in_i, ]
+    mean_of_samples_in_i <- colMeans(matrix_in_i)
+
+    sample_centroids_in_i <- data.frame(centroid = mean_of_samples_in_i) %>%
+        rownames_to_column("sample") %>%
+        mutate(cluster = i) %>%
+        select(c(.data[["sample"]], .data[["cluster"]], .data[["centroid"]]))
+
+    corr_basis <- left_join(
+        x = sample_centroids_in_i,
+        y = (as.data.frame(t(matrix_in_i)) %>% rownames_to_column("sample")),
+        by = "sample"
+    )
+    ## Two column table of "gene" and "score"
+    corr_scores <- data.frame(score = sapply(genes_in_i, function(gene) {
+        cor(corr_basis[["centroid"]], corr_basis[[gene]])
+    })) %>% rownames_to_column("gene")
+
+    return(left_join(clust_assign, corr_scores, by = "gene"))
+}
+
+calculate_cluster_corr <- function(clust_assign, scale_mat, out_dir, heatpref) {
+    red = lapply(unique(sort(clust_assign$cluster)), function(cl) {
+        calculate_cluster_corr_i(clust_assign, scale_mat, cl)
+    })
+    saveRDS(red, "/tmp/red.rds")
+}
+
 
 #' @title Perform Gene Plots
 #' @description Perform cluster gene plots for normalised and scaled
