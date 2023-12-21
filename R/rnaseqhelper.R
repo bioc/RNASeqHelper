@@ -361,33 +361,27 @@ kmeans_heatmaps <- function(norms, trans, pheno,
         heatprefix = heatprefix, prefix_title = paste0(plot_title, " :"),
     )
     dsq_dsq <- left_join(dsqres, res_dsqres$clusters,
-        by = c("gene" = "gene")
-    ) %>%
+                         by = c("gene" = "gene")) %>%
         mutate(norm_cluster = case_when(
-            is.na(.data[["cluster"]]) ~ "not in norm heatmap",
-            TRUE ~ .data[["cluster"]]
-        )) %>%
-        select(-.data[["cluster"]])
+                   is.na(.data[["cluster"]]) ~ "not in norm heatmap",
+                   TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
     if (!is.null(trans)) { ## Heatmaps using Corrected Normalized Counts
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
-            trans[genes$cluster, sample_columns], pheno,
-            k = k,
+            trans[genes$cluster, sample_columns], pheno, k = k,
             genes = genes, out_dir = out_dir,
             heatprefix = paste0(heatprefix, ".vst_corrected"),
             prefix_title = paste0(plot_title, " (vst corrected) :")
         )
         ## Merge Trans cluster
         dsq_dsq <- left_join(dsq_dsq, res_dsqres_trans$clusters,
-            by = c("gene" = "gene")
-        ) %>%
+                             by = c("gene" = "gene")) %>%
             mutate(trans_cluster = case_when(
                 is.na(.data[["cluster"]]) ~ "not in trans heatmap",
-                TRUE ~ .data[["cluster"]]
-            )) %>%
-            select(-.data[["cluster"]])
+                TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
     }
-    save_cluster <- file.path(out_dir, paste0("deseq2.results.cluster.k", k, ".tsv"))
+    save_cluster <- file.path(out_dir,
+                              paste0("deseq2.results.cluster.k", k, ".tsv"))
     write_tsv(dsq_dsq, save_cluster)
     message("   - Storing Results k", k, ":", save_cluster)
 }
@@ -455,8 +449,7 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
     scale_mat <- scale_mat[complete.cases(scale_mat), ] ## Remove 0s
 
     cluster_assignments <- single_kmeans_heatmap(
-        scale_mat, k,
-        top_genes, prefix_title, top_title,
+        scale_mat, k, top_genes, prefix_title, top_title,
         out_dir, heatprefix, width_in, height_in)
 
     cluster_assignments_scores <- calculate_cluster_corr(
@@ -468,12 +461,12 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
     write_tsv(as.data.frame(norm_counts) %>%
               rownames_to_column("gene"), save_norm)
     message("     - Saved Norm: ", save_norm)
-    write_tsv(as.data.frame(scale_mat) %>%
-              rownames_to_column("gene"),
+    write_tsv(as.data.frame(scale_mat) %>% rownames_to_column("gene"),
               save_scale)
     message("     - Saved Scale: ", save_norm)
     if (!is.null(genes$interest)) {
-        do_gene_plots(norm_counts, scale_mat, pheno_data, cluster_assignments_scores,
+        do_gene_plots(norm_counts, scale_mat, pheno_data,
+                      cluster_assignments_scores,
                       score_thresh = genes$score_thresh,
                       genes_of_interest = genes$interest, out_dir, "TEST")
     }
@@ -505,9 +498,9 @@ calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
         by = "sample"
     )
     ## Two column table of "gene" and "score"
-    corr_scores <- data.frame(score = sapply(genes_in_i, function(gene) {
+    corr_scores <- data.frame(score = vapply(genes_in_i, function(gene) {
         cor(corr_basis[["centroid"]], corr_basis[[gene]])
-    })) %>% rownames_to_column("gene")
+    }, 0)) %>% rownames_to_column("gene")
 
     return(left_join(clust_sub, corr_scores, by = "gene"))
 }
@@ -523,13 +516,15 @@ calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
 #'     plots and tables.
 #' @param prefix_str A string prefix for the filename
 #' @return A three-column table of 'gene', 'cluster' and 'score'.
-calculate_cluster_corr <- function(clust_assign, scale_mat, out_dir, prefix_str) {
+calculate_cluster_corr <- function(clust_assign, scale_mat,
+                                   out_dir, prefix_str) {
     all_clusters <- unique(sort(clust_assign$cluster))
     clust_assignments <- do.call(rbind, lapply(all_clusters, function(cl) {
         calculate_cluster_corr_i(clust_assign, scale_mat, cl)
     }))
     write_tsv(clust_assignments,
-              file=file.path(out_dir, paste0(prefix_str, ".cluster_assignments.tsv")))
+              file=file.path(out_dir,
+                             paste0(prefix_str, ".cluster_assignments.tsv")))
     return(clust_assignments)
 }
 
