@@ -39,13 +39,11 @@
 #' @param heat_params A list of parameters to override the default
 #'     `pairwise_heatmap_volcano' function. If \code{NULL}, then use
 #'     the default.
-#' @param gcbs_params list of parameters to override the default
-#'     `gene_clusters_by_score' function. If \code{NULL}, then use the
-#'     default. Contains "genes_of_interest" and "scores".
-#' @param TODO Still need to fix what is passed down at this stage
-rnaseqhelper <- function(tab, phenotype_data,
-                         keep_params = NULL, heat_params = NULL,
-                         gcbs_params = NULL) {
+#' @param volcano_params A list of parameters to override the default
+#'     `do_volcanos' function. If \code{NULL}, then use the default.
+#' @return None.
+rnaseqhelper <- function(tab, phenotype_data, keep_params = NULL,
+                         heat_params = NULL, volcano_params = NULL) {
     ## out_dir="test/1_genes"
     keep_genes <- do.call(high_quality_genes, keep_params)
 
@@ -203,7 +201,7 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                                   top_ngenes_tocluster = 2000,
                                   top_ngenes_tohighlight = 50,
                                   score_thresh, genes_of_interest = NULL,
-                                  volcano_params,
+                                  volcano_params = NULL,
                                   kmeans_list = c(2,5,8,16),
                                   out_dirprefix = ".") {
     message("Started Analysis: ", date())
@@ -694,6 +692,7 @@ high_quality_genes <- function(sam_mat,
 #'     p-value, `lfc` and an upper-limit on the log2 fold change. If
 #'     `curve_show` is set to FALSE in either `global` or `zoomed`
 #'     then no curve is shown.
+#' @return None.
 do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
                         volcano_params = NULL) {
     if (is.null(volcano_params)) {
