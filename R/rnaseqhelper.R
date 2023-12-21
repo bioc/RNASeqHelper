@@ -164,6 +164,9 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 #'     tables and plots.
 #' @param prefix String to act as the prefix filename.
 #' @return A vector of N gene names
+#' @examples
+#' dsqres <- data.frame(mLog10Padj = 1:10 / 10, gene = paste0("G", 1:10))
+#' top_n_genes(dsqres, 3, out_dir = "/tmp", prefix = "test")
 top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
     tgenes <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                head(top_ng))$gene
@@ -401,6 +404,8 @@ kmeans_heatmaps <- function(norms, trans, genes,
 #'     plot height.
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
+#' @examples
+#' norm
 heatmap_with_geneplots <- function(norm_counts, k,
                                    genes, ## highlight, interest, score_thresh
                                    out_dir = "heatmaps_k",
@@ -867,15 +872,16 @@ volcano_plot <- function(dsqres, degenes, title,
 #'     `out_dir' directory under the pattern
 #'     "gene_plots-k*_montage.svg"
 #' @examples
+#' n <- 100
 #' tab <- data.frame(
-#'     gene = c("g1", "g2", "g3", "g4", "g5", "g6"),
-#'     cluster = c(1, 1, 1, 2, 2, 2),
-#'     condition = c("red", "red", "red", "green", "green", "green"),
-#'     value = c(5, 10, 15, 5, 20, 20),
-#'     time = c(5, 5, 10, 10, 20, 20),
-#'     score = c(0.5, 0.9, 0.9, 0.9, 0.9, 0.5)
+#'     gene = paste0("G", 1:n),
+#'     cluster = as.integer(rnorm(n, 5, 2) + 1),
+#'     condition = c(rep("red", n/2), rep("green", n/2)),
+#'     value = rnorm(n, 10, 2) + 1,
+#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5,
+#'     score = as.integer(rnorm(n, 2, 0.5) + 1) / 4
 #' )
-#' plot = gene_clusters_by_score(tab, c(0.5, 0.9), out_dir = "/tmp")
+#' plot <- gene_clusters_by_score(tab, c(0.2, 0.7), out_dir = "/tmp")
 #' @export
 gene_clusters_by_score <- function(tab,
                                    score_thresh = c(0, 0.5, 0.9, 0.99),
@@ -1063,9 +1069,17 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
 #' @title Generate a label table
 #' @description Counts how many genes in each cluster for use as
 #'     plotting labels in `cluster_gene_plots'
-#' @param tabn a gene table of long data with a `cluster' field.
+#' @param tabn a gene table of long data with a `cluster', 'gene' and
+#'     'value' field.
 #' @return a table with columns of `cluster', `n' for how many genes
 #'     in that cluster, and `ftext' for labelling.
+#' @examples
+#' tabn <- data.frame(
+#'     cluster = c(1, 1, 2, 2),
+#'     gene = paste0("G", 1:4),
+#'     value = 1:4
+#' )
+#' RNASeqHelper:::generate_labelling_table(tabn)
 generate_labelling_table <- function(tabn) {
     dat_labs <- tabn %>%
         group_by(.data[["cluster"]]) %>%
