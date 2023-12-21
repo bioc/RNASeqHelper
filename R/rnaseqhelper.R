@@ -59,7 +59,7 @@ rnaseqhelper <- function(tab, phenotype_data, keep_params = NULL,
     heat_params$transformed_counts <- res$vFalse
     heat_params$out_dirprefix <- "test/2_heatmaps"
     heat_params$phv <- do.call(pairwise_hmap_volcano, heat_params)
-    
+
 }
 
 #' @title Run DESeq with sensible defaults
@@ -111,7 +111,8 @@ run_deseq <- function(tab, keep_genes, phenotype_data) {
 pca_and_matrices <- function(res, out_dir = "deseq2") {
     ## Initial input matrices
     dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-    res$tab %>% as.data.frame %>%
+    res$tab %>%
+        as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(file.path(out_dir, "input_matrix.tsv"))
 
@@ -119,11 +120,13 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 
     saveRDS(res, file.path(out_dir, "deseq2obj.rds"))
 
-    res$sub %>% as.data.frame %>%
+    res$sub %>%
+        as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(file.path(out_dir, "input_matrix.filt.tsv"))
 
-    counts(res$ddsObj, normalized=TRUE) %>% as.data.frame %>%
+    counts(res$ddsObj, normalized = TRUE) %>%
+        as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(file.path(out_dir, "input_matrix.filt.normalized.tsv"))
 
@@ -131,12 +134,19 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
         as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(
-            file.path(out_dir,
-                      "input_matrix.filt.normalized.vst_corrected.tsv"))
+            file.path(
+                out_dir,
+                "input_matrix.filt.normalized.vst_corrected.tsv"
+            )
+        )
 
-    pdf(file.path(out_dir,
-                  "input_matrix.filt.normalized.vst_corrected_PCA.pdf"),
-        width = 7, height = 7)
+    pdf(
+        file.path(
+            out_dir,
+            "input_matrix.filt.normalized.vst_corrected_PCA.pdf"
+        ),
+        width = 7, height = 7
+    )
     plot(res$bFalse)
     plot(res$bTrue)
     dev.off()
@@ -338,9 +348,9 @@ kmeans_heatmaps <- function(norms, trans, genes,
     ## Heatmaps
     message("   - Using normalized counts")
     res_dsqres <- heatmap_with_geneplots(
-        norms[genes$cluster, sample_columns], k = k, out_dir = out_dir,
+        norms[genes$cluster, sample_columns], k = k,
+        genes = genes, out_dir = out_dir,
         heatprefix = heatprefix, prefix_title = paste0(plot_title, " :"),
-        genes = genes
     )
     dsq_dsq <- left_join(dsqres, res_dsqres$clusters,
                          by = c("gene" = "gene")) %>%
@@ -351,10 +361,10 @@ kmeans_heatmaps <- function(norms, trans, genes,
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
             trans[genes$cluster, sample_columns], k = k,
+            genes = genes,
             out_dir = out_dir,
             heatprefix = paste0(heatprefix, ".vst_corrected"),
-            prefix_title = paste0(plot_title, " (vst corrected) :"),
-            genes = genes)
+            prefix_title = paste0(plot_title, " (vst corrected) :"))
         ## Merge Trans cluster
         dsq_dsq <- left_join(dsq_dsq, res_dsqres_trans$clusters,
                              by = c("gene" = "gene")) %>%
@@ -374,10 +384,6 @@ kmeans_heatmaps <- function(norms, trans, genes,
 #'     value.
 #' @param norm_counts A matrix containing normalised values.
 #' @param k An integer for the k-value for kmeans.
-#' @param out_dir A character sequence depicting the directory
-#' @param heatprefix A character sequence depicting the prefix for
-#'     heatmaps
-#' @param prefix_title A string to prefix the title of heatmap.
 #' @param genes A list with at least 3 components: `highlight`, a
 #'     vector of genes to highlight in the heatmap; `interest`, a list
 #'     of genes to plot, where if NULL, use `highlight`, and if FALSE
@@ -385,6 +391,10 @@ kmeans_heatmaps <- function(norms, trans, genes,
 #'     cluster score thresholds to filter for high quality genes in
 #'     each cluster before plotting. Default is \code{c(0, 0.5, 0.9,
 #'     0.99)}
+#' @param out_dir A character sequence depicting the directory
+#' @param heatprefix A character sequence depicting the prefix for
+#'     heatmaps
+#' @param prefix_title A string to prefix the title of heatmap.
 #' @param width_in A positive integer for the number of inches in the
 #'     plot width.
 #' @param height_in A positive integer for the number of inches in the
@@ -392,10 +402,10 @@ kmeans_heatmaps <- function(norms, trans, genes,
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 heatmap_with_geneplots <- function(norm_counts, k,
+                                   genes, ## highlight, interest, score_thresh
                                    out_dir = "heatmaps_k",
                                    heatprefix = "heatmap",
                                    prefix_title = "",
-                                   genes, ## highlight, interest, score_thresh
                                    width_in = 6, height_in = 6) {
     ## normalised counts should be in the correct sample order already
     options(repr.plot.height = height_in, repr.plot.width = width_in)
@@ -457,18 +467,20 @@ heatmap_with_geneplots <- function(norm_counts, k,
 #' @param mess A string to print during logging messages.
 #' @return None.
 do_gene_plots <- function(norm_counts, scale_mat,
-                          score_thresh, 
+                          score_thresh,
                           genes_of_interest, out_dir, mess) {
     ## Conversion to long table needs to happen here
-    long_norm <- norm_counts %>%
+    long_norm <- as.data.frame(norm_counts) %>%
         rownames_to_column("gene") %>%
         pivot_longer(-.data[["gene"]], names_to = "Sample",
                      values_to = "value")
 
-    long_scale <- scale_mat %>%
+    long_scale <- as.data.frame(scale_mat) %>%
         rownames_to_column("gene") %>%
         pivot_longer(-.data[["gene"]], names_to = "Sample",
                      values_to = "value")
+
+    ## TODO: Genes have no scores at this point.
 
     gene_clusters_by_score(long_norm,
                            score_thresh = score_thresh,
@@ -853,8 +865,8 @@ gene_clusters_by_score <- function(tab,
 #' @description Generate ribbon and line plots of gene expression data
 #'     split by cluster.
 #' @param tab A dataframe with long plotting data containing at least
-#'     the columns `cluster', `condition', `value', and `time'. It can
-#'     take normalised or scaled values as input.
+#'     the columns `cluster', `condition', `value', `time', and
+#'     'score'. It can take normalised or scaled values as input.
 #' @param score_thresh numeric threshold to filter out genes with
 #'     correlation scores not matching these values
 #' @param out_dir a string depicting the directory of where the plots
