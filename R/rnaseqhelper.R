@@ -15,13 +15,13 @@
 #' @importFrom readr read_tsv write_tsv
 #' @importFrom stats complete.cases cor dnorm kmeans time
 #' @importFrom tibble rownames_to_column
-#' @importFrom tidyr pivot_longer
+#' @importFrom tidyr pivot_longer all_of
 #' @importFrom utils head modifyList
 #' @importFrom ComplexHeatmap Heatmap anno_mark draw row_order
 #'     rowAnnotation
 #' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq plotPCA vst results
 #'     counts
-#' @importFrom SummarizedExperiment assay
+#' @importFrom SummarizedExperiment assay colData
 
 
 #' @title Run a full RNASeqhelper analysis
@@ -56,6 +56,7 @@ rnaseqhelper <- function(tab, phenotype_data, keep_params = NULL,
     ## out_dirprefix="test/outputs"
     heat_params_defaults <- formals(pairwise_hmap_volcano)
     heat_params <- modifyList(heat_params_defaults, heat_params)
+    heat_params$ddsObj <- res$ddsObj
     heat_params$transformed_counts <- res$vFalse
     heat_params$out_dirprefix <- "test/2_heatmaps"
     heat_params$phv <- do.call(pairwise_hmap_volcano, heat_params)
@@ -166,7 +167,7 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 #' @return A vector of N gene names
 #' @examples
 #' dsqres <- data.frame(mLog10Padj = 1:10 / 10, gene = paste0("G", 1:10))
-#' top_n_genes(dsqres, 3, out_dir = "/tmp", prefix = "test")
+#' RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = "/tmp", prefix = "test")
 top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
     tgenes <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                head(top_ng))$gene
@@ -251,7 +252,8 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
     zzz <- lapply(kmeans_list, function(k) {
         message("[Running k=", k, "]")
         do_kmeans(
-            norm_counts, transformed_counts, genes, sample_columns,
+            norm_counts, transformed_counts, colData(ddsObj),
+            genes, sample_columns,
             dsqres, k, outdir
         )
     })
@@ -266,6 +268,8 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 #' @param norm_counts a matrix of normalized counts
 #' @param transformed_counts a matrix of transformed counts, VST or
 #'     other produced by DESeq2
+#' @param phenotype_data a data.frame of phenotype data which has the
+#'     same rows as the number of samples.
 #' @param genes A list with at least 4 components: `cluster`, a vector
 #'     of genes to use for clustering, `highlight`, a vector of genes
 #'     to highlight in the heatmap; `interest`, a list of genes to
@@ -282,12 +286,11 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 #'     tables and plots.
 #' @return None. Produces only tables and plots in the output
 #'     directory.
-do_kmeans <- function(norm_counts, transformed_counts,
-                      genes, sample_columns,
-                      dsqres, k, out_dir) {
+do_kmeans <- function(norm_counts, transformed_counts, phenotype_data,
+                      genes, sample_columns, dsqres, k, out_dir) {
     ## Pairwise Heatmap of Normalised and Transformed Counts
     kmeans_heatmaps(
-        norm_counts, transformed_counts,
+        norm_counts, transformed_counts, phenotype_data,
         genes = genes,
         sample_columns = sample_columns,
         dsqres, k,
@@ -303,7 +306,7 @@ do_kmeans <- function(norm_counts, transformed_counts,
 
     ## Global Heatmap of Normalised and Transformed Counts
     kmeans_heatmaps(
-        norm_counts, transformed_counts,
+        norm_counts, transformed_counts, phenotype_data,
         genes = genes,
         sample_columns = NULL,
         dsqres, k,
@@ -318,6 +321,7 @@ do_kmeans <- function(norm_counts, transformed_counts,
 #' @param norms a matrix of normalized counts
 #' @param trans a matrix of transformed counts, VST or other produced
 #'     by DESeq2.
+#' @param pheno a data.frame of phenotype data
 #' @param sample_columns a vector of sample names. If NULL (the
 #'     default), then use all samples
 #' @param genes A list with at least 4 components: `cluster`, a vector
@@ -334,8 +338,8 @@ do_kmeans <- function(norm_counts, transformed_counts,
 #'     tables and plots.
 #' @param heatprefix String to prefix heatmap plot filenames
 #' @param plot_title String depicting title to embed into plot
-kmeans_heatmaps <- function(norms, trans, genes,
-                            sample_columns = NULL,
+kmeans_heatmaps <- function(norms, trans, pheno,
+                            genes, sample_columns = NULL,
                             dsqres, k, out_dir, heatprefix, plot_title) {
     if (is.null(genes$cluster)) {
         message(" - Using all genes in normalised matrix for clustering")
@@ -351,33 +355,39 @@ kmeans_heatmaps <- function(norms, trans, genes,
     ## Heatmaps
     message("   - Using normalized counts")
     res_dsqres <- heatmap_with_geneplots(
-        norms[genes$cluster, sample_columns], k = k,
+        norms[genes$cluster, sample_columns], pheno,
+        k = k,
         genes = genes, out_dir = out_dir,
         heatprefix = heatprefix, prefix_title = paste0(plot_title, " :"),
     )
     dsq_dsq <- left_join(dsqres, res_dsqres$clusters,
-                         by = c("gene" = "gene")) %>%
+        by = c("gene" = "gene")
+    ) %>%
         mutate(norm_cluster = case_when(
-                   is.na(.data[["cluster"]]) ~ "not in norm heatmap",
-                   TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
-    if (!is.null(trans)) {       ## Heatmaps using Corrected Normalized Counts
+            is.na(.data[["cluster"]]) ~ "not in norm heatmap",
+            TRUE ~ .data[["cluster"]]
+        )) %>%
+        select(-.data[["cluster"]])
+    if (!is.null(trans)) { ## Heatmaps using Corrected Normalized Counts
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
-            trans[genes$cluster, sample_columns], k = k,
-            genes = genes,
-            out_dir = out_dir,
+            trans[genes$cluster, sample_columns], pheno,
+            k = k,
+            genes = genes, out_dir = out_dir,
             heatprefix = paste0(heatprefix, ".vst_corrected"),
-            prefix_title = paste0(plot_title, " (vst corrected) :"))
+            prefix_title = paste0(plot_title, " (vst corrected) :")
+        )
         ## Merge Trans cluster
         dsq_dsq <- left_join(dsq_dsq, res_dsqres_trans$clusters,
-                             by = c("gene" = "gene")) %>%
+            by = c("gene" = "gene")
+        ) %>%
             mutate(trans_cluster = case_when(
-                       is.na(.data[["cluster"]]) ~ "not in trans heatmap",
-                       TRUE ~ .data[["cluster"]])) %>%
+                is.na(.data[["cluster"]]) ~ "not in trans heatmap",
+                TRUE ~ .data[["cluster"]]
+            )) %>%
             select(-.data[["cluster"]])
     }
-    save_cluster <- file.path(out_dir, paste0("deseq2.results.cluster.k",
-                                              k, ".tsv"))
+    save_cluster <- file.path(out_dir, paste0("deseq2.results.cluster.k", k, ".tsv"))
     write_tsv(dsq_dsq, save_cluster)
     message("   - Storing Results k", k, ":", save_cluster)
 }
@@ -386,6 +396,7 @@ kmeans_heatmaps <- function(norms, trans, genes,
 #' @description Generate a clustered heatmaps for a specific k means
 #'     value.
 #' @param norm_counts A matrix containing normalised values.
+#' @param pheno_data A data.frame of phenotype data.
 #' @param k An integer for the k-value for kmeans.
 #' @param genes A list with at least 3 components: `highlight`, a
 #'     vector of genes to highlight in the heatmap; `interest`, a list
@@ -405,8 +416,19 @@ kmeans_heatmaps <- function(norms, trans, genes,
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
-#' norm
-heatmap_with_geneplots <- function(norm_counts, k,
+#' n = 100
+#' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
+#' pheno <- data.frame(sample=paste0("S", 1:n),
+#'                     condition = c(rep("red", n / 2), rep("green", n / 2)),
+#'                     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5)
+#' rownames(norm_counts) <- paste0("G", 1:n)
+#' colnames(norm_counts) <- paste0("S", 1:n)
+#' genes <- list(highlight = paste0("G", 1:10),
+#'              interest = paste0("G", c(2,3)),
+#'              score_thresh = c(0.2, 0.3))
+#' res <- heatmap_with_geneplots(norm_counts, pheno, 2, genes, out_dir = "/tmp")
+#' @export
+heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
                                    genes, ## highlight, interest, score_thresh
                                    out_dir = "heatmaps_k",
                                    heatprefix = "heatmap",
@@ -451,18 +473,24 @@ heatmap_with_geneplots <- function(norm_counts, k,
               save_scale)
     message("     - Saved Scale: ", save_norm)
     if (!is.null(genes$interest)) {
-        do_gene_plots(norm_counts, scale_mat,
+        do_gene_plots(norm_counts, scale_mat, pheno_data, cluster_assignments_scores,
                       score_thresh = genes$score_thresh,
                       genes_of_interest = genes$interest, out_dir, "TEST")
     }
     return(list(clusters = cluster_assignments_scores, scaled = scale_mat))
 }
 
+#' @title Calculate Cluster Correlation for a single cluster
+#' @description Calculate cluster correlation scores for a single
+#'     cluster of genes
 #' @param clust_assign A two-column table of 'gene' and 'cluster'.
-#' @param scale_mat A matrix with genes as rows and samples as columns.
+#' @param scale_mat A matrix with genes as rows and samples as
+#'     columns.
 #' @param i A positive integer representing a cluster number.
+#' @return A three-column table of 'gene', 'cluster' and 'score'.
 calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
-    genes_in_i <- clust_assign[clust_assign$cluster == i, ]$gene
+    clust_sub <- clust_assign[clust_assign$cluster == i, ]
+    genes_in_i <- clust_sub$gene
     matrix_in_i <- scale_mat[genes_in_i, ]
     mean_of_samples_in_i <- colMeans(matrix_in_i)
 
@@ -481,14 +509,28 @@ calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
         cor(corr_basis[["centroid"]], corr_basis[[gene]])
     })) %>% rownames_to_column("gene")
 
-    return(left_join(clust_assign, corr_scores, by = "gene"))
+    return(left_join(clust_sub, corr_scores, by = "gene"))
 }
 
-calculate_cluster_corr <- function(clust_assign, scale_mat, out_dir, heatpref) {
-    red = lapply(unique(sort(clust_assign$cluster)), function(cl) {
+#' @title Calculate Cluster Correlation
+#' @description Calculate mean expression of each sample for each
+#'     cluster to have gene centroids, and use these to calculate
+#'     correlation scores for each gene against the centroid.
+#' @param clust_assign A two-column table of 'gene' and 'cluster'.
+#' @param scale_mat A matrix with genes as rows and samples as
+#'     columns.
+#' @param out_dir A string denoting the output directory to store
+#'     plots and tables.
+#' @param prefix_str A string prefix for the filename
+#' @return A three-column table of 'gene', 'cluster' and 'score'.
+calculate_cluster_corr <- function(clust_assign, scale_mat, out_dir, prefix_str) {
+    all_clusters <- unique(sort(clust_assign$cluster))
+    clust_assignments <- do.call(rbind, lapply(all_clusters, function(cl) {
         calculate_cluster_corr_i(clust_assign, scale_mat, cl)
-    })
-    saveRDS(red, "/tmp/red.rds")
+    }))
+    write_tsv(clust_assignments,
+              file=file.path(out_dir, paste0(prefix_str, ".cluster_assignments.tsv")))
+    return(clust_assignments)
 }
 
 
@@ -499,6 +541,9 @@ calculate_cluster_corr <- function(clust_assign, scale_mat, out_dir, heatpref) {
 #'     rows and samples as columns.
 #' @param scale_mat a matrix of scaled count data, with genes as rows
 #'     and samples as columns.
+#' @param pheno_data a data.frame of phenotype data.
+#' @param gene_cluster_scores A data frame with three columns: 'gene',
+#'     'cluster', and 'scores'.
 #' @param score_thresh Vector of numerics depicting cluster score
 #'     thresholds to filter for high quality genes in each cluster
 #'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
@@ -511,21 +556,24 @@ calculate_cluster_corr <- function(clust_assign, scale_mat, out_dir, heatpref) {
 #'     plots and tables.
 #' @param mess A string to print during logging messages.
 #' @return None.
-do_gene_plots <- function(norm_counts, scale_mat,
-                          score_thresh,
+do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
+                          gene_cluster_scores, score_thresh,
                           genes_of_interest, out_dir, mess) {
-    ## Conversion to long table needs to happen here
-    long_norm <- as.data.frame(norm_counts) %>%
-        rownames_to_column("gene") %>%
-        pivot_longer(-.data[["gene"]], names_to = "Sample",
-                     values_to = "value")
 
-    long_scale <- as.data.frame(scale_mat) %>%
-        rownames_to_column("gene") %>%
-        pivot_longer(-.data[["gene"]], names_to = "Sample",
-                     values_to = "value")
+    ## bind the phenotype data to the matrix data
+    long_norm <- left_join(
+        left_join(
+            as.data.frame(t(norm_counts)) %>% rownames_to_column("sample"),
+            pheno_data, by = "sample" ) %>%
+        pivot_longer(all_of(rownames(norm_counts)), names_to = "gene"),
+        gene_cluster_scores, by = "gene" )
 
-    ## TODO: Genes have no scores at this point.
+    long_scale <- left_join(
+        left_join(
+            as.data.frame(t(scale_mat)) %>% rownames_to_column("sample"),
+            pheno_data, by = "sample" ) %>%
+        pivot_longer(all_of(rownames(scale_mat)), names_to = "gene"),
+        gene_cluster_scores, by = "gene" )
 
     gene_clusters_by_score(long_norm,
                            score_thresh = score_thresh,
