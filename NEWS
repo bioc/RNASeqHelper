@@ -1,0 +1,12 @@
+CHANGES IN VERSION 0.1.*
+------------------------
+
+NEW FEATURES
+
+    o rnaseqhelper() to perform an entire analysis
+    o high_quality_genes() to select for informative genes
+    o run_deseq() to perform a DESeq analysis
+    o pca_and_matrices() to plot and save PCA plots and
+                         corrected matrices
+    o pairwise_hmap_volcano() to generate heatmaps, volcano
+                              plots, and gene plots.
