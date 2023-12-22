@@ -467,11 +467,11 @@ kmeans_heatmaps <- function(norms, trans, pheno,
 #' genes <- list(highlight = paste0("G", 1:10),
 #'              interest = paste0("G", c(2,3)),
 #'              score_thresh = c(0.2, 0.3))
-#' res <- heatmap_with_geneplots(norm_counts, pheno, 2, genes, out_dir = "/tmp")
+#' res <- heatmap_with_geneplots(norm_counts, pheno, 2,
+#'                               genes, out_dir = "/tmp")
 #' @export
 heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
-                                   genes, ## highlight, interest, score_thresh
-                                   out_dir = "heatmaps_k",
+                                   genes, out_dir = "heatmaps_k",
                                    heatprefix = "heatmap",
                                    prefix_title = "",
                                    width_in = 6, height_in = 6) {
@@ -479,8 +479,8 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
     options(repr.plot.height = height_in, repr.plot.width = width_in)
     if (!dir.exists(out_dir)) { dir.create(out_dir) }
     if (is.null(genes$highlight)) {
-        top_genes <- head(names(sort(rowMeans(norm_counts),       ## If no genes
-                                     decreasing = TRUE)), 30)     ## given, show
+        top_genes <- head(names(sort(rowMeans(norm_counts),   ## If no genes
+                                     decreasing = TRUE)), 30)   ## given show
         top_title <- paste0(nrow(norm_counts), " DE genes, top ", ## top N
                             length(top_genes), " highlighted")
     } else {
@@ -743,8 +743,9 @@ single_kmeans_heatmap <- function(scale_mat, k, top_genes,
         row_km = k, cluster_row_slices = FALSE, ## Arrange the K? NO
         cluster_rows = TRUE,  ## Prevents annotation bunching if TRUE
         show_row_dend = FALSE, row_gap = unit(3, "mm"), name = "mat",
-        row_title = rtitle, col = colorRampPalette(c("black", "#bb0000"))(100),
-        cluster_columns = FALSE, show_row_names = FALSE, right_annotation = ha,
+        row_title = rtitle, right_annotation = ha,
+        col = colorRampPalette(c("black", "#bb0000"))(100),
+        cluster_columns = FALSE, show_row_names = FALSE,
         column_names_rot = 45, row_names_gp = gpar(fontsize = 4))
 
     hm_now_drawn <- draw(hm_now)
@@ -935,8 +936,9 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
     ## Volcano Plots zoomed in
     p2 <- volcano_plot(
         dsqres %>%
-            filter(abs(.data[["log2FoldChange"]]) < volcano_params$zoomed$lfc &
-                .data[["mLog10Padj"]] < volcano_params$zoomed$padj),
+        filter(abs(.data[["log2FoldChange"]]) <
+               volcano_params$zoomed$lfc &
+               .data[["mLog10Padj"]] < volcano_params$zoomed$padj),
         top_genes_tohighlight, paste0(plot_title, " (zoomed)"),
         curve = volcano_params$zoomed$curve,
         ylim = volcano_params$zoomed$ylim,
@@ -1017,7 +1019,8 @@ volcano_plot <- function(dsqres, degenes, title,
         scale_shape_manual(values = c("TRUE" = 5, "FALSE" = 19)) +
         scale_x_continuous(limits = c(-max_x, max_x), breaks = waiver(),
                            n.breaks = 10) +
-        geom_label_repel(data = red %>% filter(.data[["highlight"]] == TRUE) %>%
+        geom_label_repel(data = red %>%
+                             filter(.data[["highlight"]] == TRUE) %>%
                              head(15), box.padding = 0.5, max.overlaps = 30,
                          colour = "black") + ggtitle(title)
 
@@ -1167,13 +1170,13 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
             pgene_norm <- single_gene_plot(
                 norm_long, genes_found, glist_name,
                 "Log10 Normalised Expression",
-                "Normalised Expression Time Plots grouped by Genes of Interest",
+                "Normalised Expression Plots grouped by Genes of Interest",
                 out_dir, outprefix, ".normalised.svg", TRUE
             )
             pgene_scale <- single_gene_plot(
                 scale_long, genes_found, glist_name,
                 "Scaled Expression",
-                "Scaled Expression Time Plots grouped by Genes of Interest",
+                "Scaled Expression Plots grouped by Genes of Interest",
                 out_dir, outprefix, ".scaled.svg", FALSE
             )
             return(list(norm = pgene_norm, scale = pgene_scale))
