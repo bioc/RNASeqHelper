@@ -1,5 +1,5 @@
 Package: RNASeqHelper
-Title: Generate Heatmaps and Volcano Plots for your DESeq2 Contract of Interest
+Title: Generate Heatmaps and Volcano Plots for your DESeq2 Genes of Interest
 Version: 0.99.0
 Authors@R: 
     c(person(given="Mehmet", family="Tekman",

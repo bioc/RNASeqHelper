@@ -457,7 +457,7 @@ kmeans_heatmaps <- function(norms, trans, pheno,
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
-#' n = 100
+#' n <- 100
 #' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' pheno <- data.frame(sample=paste0("S", 1:n),
 #'                     condition = c(rep("red", n / 2), rep("green", n / 2)),
@@ -620,7 +620,7 @@ calculate_cluster_corr <- function(clust_assign, scale_mat,
 #'     plots and tables.
 #' @return None.
 #' @examples
-#' n = 100
+#' n <- 100
 #' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' rownames(norm_counts) <- paste0("G", 1:n)
 #' colnames(norm_counts) <- paste0("S", 1:n)
@@ -720,7 +720,7 @@ cluster_assignments <- function(hm_now_drawn, matobj) {
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
-#' n = 100
+#' n <- 100
 #' scale_mat <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' rownames(scale_mat) <- paste0("G", 1:n)
 #' colnames(scale_mat) <- paste0("S", 1:n)
