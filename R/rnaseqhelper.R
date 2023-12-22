@@ -481,6 +481,16 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
 #'     columns.
 #' @param i A positive integer representing a cluster number.
 #' @return A three-column table of 'gene', 'cluster' and 'score'.
+#' n <- 100
+#' scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
+#' rownames(scale_mat) <- paste0("G", 1:n)
+#' colnames(scale_mat) <- paste0("S", 1:n)
+#' clust_assign <- data.frame(
+#'     gene = rownames(scale_mat),
+#'     cluster = c(rep(1, n / 50), rep(2, n / 50)),
+#'     value = rnorm(n, 100, 10)
+#' )
+#' cac <- calculate_cluster_corr(clust_assign, scale_mat, 2)
 calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
     clust_sub <- clust_assign[clust_assign$cluster == i, ]
     genes_in_i <- clust_sub$gene
@@ -516,6 +526,18 @@ calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
 #'     plots and tables.
 #' @param prefix_str A string prefix for the filename
 #' @return A three-column table of 'gene', 'cluster' and 'score'.
+#' @examples
+#' n <- 100
+#' scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
+#' rownames(scale_mat) <- paste0("G", 1:n)
+#' colnames(scale_mat) <- paste0("S", 1:n)
+#' clust_assign <- data.frame(
+#'     gene = rownames(scale_mat),
+#'     cluster = c(rep(1, n / 50), rep(2, n / 50)),
+#'     value = rnorm(n, 100, 10)
+#' )
+#' ca <- calculate_cluster_corr(clust_assign, scale_mat, "/tmp", "red")
+#' @export
 calculate_cluster_corr <- function(clust_assign, scale_mat,
                                    out_dir, prefix_str) {
     all_clusters <- unique(sort(clust_assign$cluster))
@@ -523,8 +545,11 @@ calculate_cluster_corr <- function(clust_assign, scale_mat,
         calculate_cluster_corr_i(clust_assign, scale_mat, cl)
     }))
     write_tsv(clust_assignments,
-              file=file.path(out_dir,
-                             paste0(prefix_str, ".cluster_assignments.tsv")))
+        file = file.path(
+            out_dir,
+            paste0(prefix_str, ".cluster_assignments.tsv")
+        )
+    )
     return(clust_assignments)
 }
 
@@ -551,6 +576,31 @@ calculate_cluster_corr <- function(clust_assign, scale_mat,
 #'     plots and tables.
 #' @param mess A string to print during logging messages.
 #' @return None.
+#' @examples
+#' n = 100
+#' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
+#' rownames(norm_counts) <- paste0("G", 1:n)
+#' colnames(norm_counts) <- paste0("S", 1:n)
+#' scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
+#' rownames(scale_mat) <- paste0("G", 1:n)
+#' colnames(scale_mat) <- paste0("S", 1:n)
+#' pheno <- data.frame(
+#'     sample = paste0("S", 1:n),
+#'     condition = c(rep("red", n / 2), rep("green", n / 2)),
+#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+#' )
+#' gene_cluster_scores <- data.frame(
+#'     gene = rownames(scale_mat),
+#'     cluster = c(rep(1, n / 50), rep(2, n / 50)),
+#'     score = rnorm(n, 0.5, 0.25)
+#' )
+#' score_thresh <- c(0.2, 0.3)
+#' genes_of_interest <- paste0("G", 5:50)
+#' res <- do_gene_plots(norm_counts, scale_mat, pheno,
+#'                      gene_cluster_scores, score_thresh,
+#'                      genes_of_interest,
+#'                      out_dir = "/tmp", "message")
+#' @export
 do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
                           gene_cluster_scores, score_thresh,
                           genes_of_interest, out_dir, mess) {
@@ -595,13 +645,20 @@ do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
 #' @return A two column data frame of Gene and Cluster in ascending
 #'     order of cluster number.
 cluster_assignments <- function(hm_now_drawn, matobj) {
-    cluster_list <- lapply(row_order(hm_now_drawn),
-                           function(x) rownames(matobj)[x])
+    cluster_list <- lapply(
+        row_order(hm_now_drawn),
+        function(x) rownames(matobj)[x]
+    )
     cluster_table <- do.call(
-        rbind, lapply(names(cluster_list),
-                      function(n)
-                          data.frame(gene = cluster_list[[n]],
-                                     cluster = n))
+        rbind, lapply(
+            names(cluster_list),
+            function(n) {
+                data.frame(
+                    gene = cluster_list[[n]],
+                    cluster = n
+                )
+            }
+        )
     )
     return(cluster_table)
 }
@@ -622,6 +679,15 @@ cluster_assignments <- function(hm_now_drawn, matobj) {
 #'     plot height.
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
+#' @examples
+#' n = 100
+#' scale_mat <- matrix(rnorm(n**2, mean = 5), nrow = n)
+#' rownames(scale_mat) <- paste0("G", 1:n)
+#' colnames(scale_mat) <- paste0("S", 1:n)
+#' top_genes <- paste0("G", n - 50:n - 20)
+#' res <- single_kmeans_heatmap(scale_mat, 2, top_genes, "test", "test",
+#'                              out_dir = "/tmp", "test", 7, 7)
+#' @export
 single_kmeans_heatmap <- function(scale_mat, k, top_genes,
                                   prefix_title, top_title,
                                   out_dir, heatprefix,
@@ -764,14 +830,16 @@ high_quality_genes <- function(sam_mat,
     write_tsv(
         data.frame(Gene = names(res), Keep = res),
         file.path(out_dir, paste0(
-                               "smallestGroup",
-                               min_occur, "-detected",
-                               min_detect, "-keep_genes"
-                           ))
+            "smallestGroup",
+            min_occur, "-detected",
+            min_detect, "-keep_genes"
+        ))
     )
-    message("Dropped: ", length(drop_genes),
-            " genes (",
-            as.integer(100 * length(drop_genes) / length(res)), "%)")
+    message(
+        "Dropped: ", length(drop_genes),
+        " genes (",
+        as.integer(100 * length(drop_genes) / length(res)), "%)"
+    )
     return(keep_genes)
 }
 
@@ -793,6 +861,18 @@ high_quality_genes <- function(sam_mat,
 #'     `curve_show` is set to FALSE in either `global` or `zoomed`
 #'     then no curve is shown.
 #' @return None.
+#' @examples
+#' n <- 100
+#' dsqres <- data.frame(
+#'     gene = paste0("G", 1:n),
+#'     data = rnorm(n, 5, 2),
+#'     log2FoldChange = 1e-5,
+#'     mLog10Padj = rnorm(n, 1000, 2),
+#'     padj = 1/rnorm(n, 1000, 2)
+#' )
+#' top_genes_tohighlight <- paste0("G", (n-50):(n-20))
+#' res <- RNASeqHelper:::do_volcanos(dsqres, top_genes_tohighlight,
+#'                                   "my plot", "/tmp")
 do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
                         volcano_params = NULL) {
     if (is.null(volcano_params)) {
@@ -809,13 +889,14 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
     }
     ## Volcano Plots
     p1 <- volcano_plot(dsqres, top_genes_tohighlight, plot_title,
-                       curve = volcano_params$global$curve,
-                       curve_show = volcano_params$global$curve_show)
+        curve = volcano_params$global$curve,
+        curve_show = volcano_params$global$curve_show
+    )
     ## Volcano Plots zoomed in
     p2 <- volcano_plot(
         dsqres %>%
             filter(abs(.data[["log2FoldChange"]]) < volcano_params$zoomed$lfc &
-                   .data[["mLog10Padj"]] < volcano_params$zoomed$padj),
+                .data[["mLog10Padj"]] < volcano_params$zoomed$padj),
         top_genes_tohighlight, paste0(plot_title, " (zoomed)"),
         curve = volcano_params$zoomed$curve,
         ylim = volcano_params$zoomed$ylim,
@@ -833,8 +914,10 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
     dev.off()
     message("Saved Volcano: ", volcano_svg)
 
-    dsqres %>% mutate(isTopN.gene = .data[["gene"]] %in%
-                          top_genes_tohighlight) %>% write_tsv(deseq2_out)
+    dsqres %>%
+        mutate(isTopN.gene = .data[["gene"]] %in%
+            top_genes_tohighlight) %>%
+        write_tsv(deseq2_out)
     message("Saved DESeq2 Results: ", deseq2_out)
 }
 
@@ -849,10 +932,18 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
 #' @param curve_show A boolean on whether or not to show the curve.
 #' @param ylim A vector of two components to limit the Y-axis.
 #' @return A ggplot2 object of the volcano plot.
+#' @examples
+#' n <- 100
+#' dsqres <- data.frame(gene = paste0("G", 1:n),
+#'                      data = rnorm(n, 5, 2),
+#'                      log2FoldChange = 1e-5,
+#'                      padj = 1 / rnorm(n, 5, 2))
+#' degenes <- paste0("G", (n-50):(n-20))
+#' res <- volcano_plot(dsqres, degenes, "my plot")
+#' @export
 volcano_plot <- function(dsqres, degenes, title,
                          curve = list(sd = 0.15, sc = 10, offset = 1),
-                         curve_scale = 1, curve_show = FALSE,
-                         ylim = NULL) {
+                         curve_scale = 1, curve_show = FALSE, ylim = NULL) {
     options(repr.plot.height = 12, repr.plot.width = 12)
     ## Extract relevant info from DESeq results
     ana <- dsqres %>% select(c(.data[["gene"]], .data[["log2FoldChange"]],
@@ -1122,7 +1213,7 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
 #'     gene = paste0("G", 1:4),
 #'     value = 1:4
 #' )
-#' RNASeqHelper:::generate_labelling_table(tabn)
+#' res <- RNASeqHelper:::generate_labelling_table(tabn)
 generate_labelling_table <- function(tabn) {
     dat_labs <- tabn %>%
         group_by(.data[["cluster"]]) %>%
