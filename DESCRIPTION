@@ -1,13 +1,14 @@
 Package: RNASeqHelper
+Type: Package
 Title: Generate Heatmaps and Volcano Plots for your DESeq2 Genes of Interest
 Version: 0.99.0
 Authors@R: 
     c(person(given="Mehmet", family="Tekman",
-      email = "mtekman89@gmail.com",
-      role = c("aut", "cre"), comment = c(ORCID = "0000-0002-4181-2676")),
-      person(given="Sebastian", family="Arnold",
-      email = "sebastian.arnold@pharmakol.uni-freiburg.de",
-      role = c("fnd"), comment = c(ORCID = "0000-0002-2688-9210")))
+        email = "mtekman89@gmail.com",
+        role = c("aut", "cre"), comment = c(ORCID = "0000-0002-4181-2676")),
+        person(given="Sebastian", family="Arnold",
+        email = "sebastian.arnold@pharmakol.uni-freiburg.de",
+        role = c("fnd"), comment = c(ORCID = "0000-0002-2688-9210")))
 Description:
     Perform a full DESeq2 analysis for your RNA-seq data, generating
     colourful Volcano and Kmeans-clustered Heatmaps, along with
@@ -16,7 +17,7 @@ Description:
     z-score scaled expression between contrasts for contrasted samples
     and all. Time series plots show gene trends on normalised,
     corrected, and scaled data, for varying cluster correlation
-    thresholds. 
+    thresholds.
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
