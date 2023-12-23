@@ -36,19 +36,20 @@
 #' @param out_dir String depicting the output directory to place
 #'     tables and plots.
 #' @param numer A string value to select sample columns from the
-#'     `condition` column that will be part of the numerator part of
-#'     the contrast.
+#'     \code{condition} column that will be part of the numerator part
+#'     of the contrast.
 #' @param denom A string value to select sample columns from the
-#'     `condition` column, that will be the denominator part of the
-#'     contrast.
-#' @param keep_params A list of two components `min_occur' and
-#'     `min_detect' as defined by the default `high_quality_genes'
-#'     function.
+#'     \code{condition} column, that will be the denominator part of
+#'     the contrast.
+#' @param keep_params A list of two components \code{min_occur} and
+#'     \code{min_detect} as defined by the default
+#'     \code{high_quality_genes} function.
 #' @param heat_params A list of parameters to override the default
-#'     `pairwise_heatmap_volcano' function. If \code{NULL}, then use
-#'     the default.
+#'     \code{pairwise_heatmap_volcano} function. If \code{NULL}, then
+#'     use the default.
 #' @param volcano_params A list of parameters to override the default
-#'     `do_volcanos' function. If \code{NULL}, then use the default.
+#'     \code{do_volcanos} function. If \code{NULL}, then use the
+#'     default.
 #' @return None.
 #' @examples
 #' n <- 1000
@@ -100,7 +101,8 @@ rnaseqhelper <- function(tab, phenotype_data, out_dir = "/tmp",
 #' @description Runs DESeq with filtering thresholds and shows PCA for
 #'     variance-stabilize-transformed data.
 #' @param tab a matrix of samples (columns) and informative genes
-#'     (rows), ideally subset using the function `high_quality_genes'
+#'     (rows), ideally subset using the function
+#'     \code{high_quality_genes}
 #' @param keep_genes a vector of genes to subset.
 #' @param phenotype_data a table with samples (rows) with extra
 #'     columns for annotation groups. One of these groups must be
@@ -155,7 +157,7 @@ run_deseq <- function(tab, keep_genes, phenotype_data, out_dir) {
 #' @title Print and Store PCA and Matrices
 #' @description Takes the output of a DESeq2 run and generates
 #'     normalization tables and PCAs
-#' @param res Output of `run_deseq`.
+#' @param res Output of \code{run_deseq}.
 #' @param out_dir String depicting the output directory to place
 #'     tables and plots.
 #' @return None. Plots and tables and placed into output directory.
@@ -234,11 +236,11 @@ top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
 #' @param ddsObj A DESeq object,
 #' @param transformed_counts REALLY UNSURE WHAT'S GOING ON HERE
 #' @param numer A string value to select sample columns from the
-#'     `condition` column that will be part of the numerator part of
-#'     the contrast.
+#'     \code{condition} column that will be part of the numerator part
+#'     of the contrast.
 #' @param denom A string value to select sample columns from the
-#'     `condition` column, that will be the denominator part of the
-#'     contrast.
+#'     \code{condition} column, that will be the denominator part of
+#'     the contrast.
 #' @param top_ngenes_tocluster A positive integer. How many of the top
 #'     log10 padj values to take. Default is 2000.
 #' @param top_ngenes_tohighlight A positive integer. How many of the
@@ -250,13 +252,13 @@ top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
 #'     ribbot plots. If NULL
 #' @param volcano_params A list of two components: "global" and
 #'     "zoomed" each with "curve" and "curve_show" components
-#'     describing the curve to fit to the volcano plots by `sd`
-#'     (standard deviation from center mean), `sc` vertical scale
-#'     factor, `offset` vertical offset. Extra params for the `zoomed`
-#'     component are `ylim`, `padj` an upper limit on the adjusted
-#'     p-value, `lfc` and an upper-limit on the log2 fold change. If
-#'     `curve_show` is set to FALSE in either `global` or `zoomed`
-#'     then no curve is shown.
+#'     describing the curve to fit to the volcano plots by \code{sd}
+#'     (standard deviation from center mean), \code{sc} vertical scale
+#'     factor, \code{offset} vertical offset. Extra params for the
+#'     \code{zoomed} component are \code{ylim}, \code{padj} an upper
+#'     limit on the adjusted p-value, \code{lfc} and an upper-limit on
+#'     the log2 fold change. If \code{curve_show} is set to FALSE in
+#'     either \code{global} or \code{zoomed} then no curve is shown.
 #' @param kmeans_list A list of positive integers to do k-means
 #' @param out_dirprefix A character prefix outlining the directory and
 #'     basename in which plots and tables will be deployed.
@@ -316,11 +318,11 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
 #'     other produced by DESeq2
 #' @param phenotype_data a data.frame of phenotype data which has the
 #'     same rows as the number of samples.
-#' @param genes A list with at least 4 components: `cluster`, a vector
-#'     of genes to use for clustering, `highlight`, a vector of genes
-#'     to highlight in the heatmap; `interest`, a list of genes to
-#'     plot, where if NULL, use `highlight`, and if FALSE do not use;
-#'     `score_thresh` a vector of numerics depicting cluster score
+#' @param genes A list with at least 4 components: \code{cluster}, a vector
+#'     of genes to use for clustering, \code{highlight}, a vector of genes
+#'     to highlight in the heatmap; \code{interest}, a list of genes to
+#'     plot, where if NULL, use \code{highlight}, and if FALSE do not use;
+#'     \code{score_thresh} a vector of numerics depicting cluster score
 #'     thresholds to filter for high quality genes in each cluster
 #'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
 #' @param sample_columns a vector of sample names. If NULL (the
@@ -370,11 +372,11 @@ do_kmeans <- function(norm_counts, transformed_counts, phenotype_data,
 #' @param pheno a data.frame of phenotype data
 #' @param sample_columns a vector of sample names. If NULL (the
 #'     default), then use all samples
-#' @param genes A list with at least 4 components: `cluster`, a vector
-#'     of genes to use for clustering, `highlight`, a vector of genes
-#'     to highlight in the heatmap; `interest`, a list of genes to
-#'     plot, where if NULL, use `highlight`, and if FALSE do not use;
-#'     `score_thresh` a vector of numerics depicting cluster score
+#' @param genes A list with at least 4 components: \code{cluster}, a vector
+#'     of genes to use for clustering, \code{highlight}, a vector of genes
+#'     to highlight in the heatmap; \code{interest}, a list of genes to
+#'     plot, where if NULL, use \code{highlight}, and if FALSE do not use;
+#'     \code{score_thresh} a vector of numerics depicting cluster score
 #'     thresholds to filter for high quality genes in each cluster
 #'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
 #' @param dsqres the output of the DESeq2 function \code{results},
@@ -411,8 +413,8 @@ kmeans_heatmaps <- function(norms, trans, pheno,
     dsq_dsq <- left_join(dsqres, res_dsqres$clusters,
                          by = c("gene" = "gene")) %>%
         mutate(norm_cluster = case_when(
-                   is.na(.data[["cluster"]]) ~ "not in norm heatmap",
-                   TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
+                is.na(.data[["cluster"]]) ~ "not in norm heatmap",
+                TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
     if (!is.null(trans)) { ## Heatmaps using Corrected Normalized Counts
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
@@ -439,13 +441,13 @@ kmeans_heatmaps <- function(norms, trans, pheno,
 #' @param norm_counts A matrix containing normalised values.
 #' @param pheno_data A data.frame of phenotype data.
 #' @param k An integer for the k-value for kmeans.
-#' @param genes A list with at least 3 components: `highlight`, a
-#'     vector of genes to highlight in the heatmap; `interest`, a list
-#'     of genes to plot, where if NULL, use `highlight`, and if FALSE
-#'     do not use; `score_thresh` a vector of numerics depicting
-#'     cluster score thresholds to filter for high quality genes in
-#'     each cluster before plotting. Default is \code{c(0, 0.5, 0.9,
-#'     0.99)}
+#' @param genes A list with at least 3 components: \code{highlight}, a
+#'     vector of genes to highlight in the heatmap; \code{interest}, a
+#'     list of genes to plot, where if NULL, use \code{highlight}, and
+#'     if FALSE do not use; \code{score_thresh} a vector of numerics
+#'     depicting cluster score thresholds to filter for high quality
+#'     genes in each cluster before plotting. Default is \code{c(0,
+#'     0.5, 0.9, 0.99)}
 #' @param out_dir A character sequence depicting the directory
 #' @param heatprefix A character sequence depicting the prefix for
 #'     heatmaps
@@ -525,6 +527,7 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
 #'     columns.
 #' @param i A positive integer representing a cluster number.
 #' @return A three-column table of 'gene', 'cluster' and 'score'.
+#' @examples
 #' n <- 100
 #' scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
 #' rownames(scale_mat) <- paste0("G", 1:n)
@@ -535,6 +538,7 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
 #'     value = rnorm(n, 100, 10)
 #' )
 #' cac <- calculate_cluster_corr(clust_assign, scale_mat, 2)
+#' @export
 calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
     clust_sub <- clust_assign[clust_assign$cluster == i, ]
     genes_in_i <- clust_sub$gene
@@ -667,9 +671,10 @@ do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
                            score_thresh = score_thresh,
                            out_dir = file.path(out_dir, "gene_cluster_norm"))
     message("     - Plotting genes Norm")
-    gene_clusters_by_score(long_scale,
-                           score_thresh = score_thresh,
-                           out_dir = file.path(out_dir, "gene_cluster_scale"))
+    gene_clusters_by_score(
+        long_scale,
+        score_thresh = score_thresh,
+        out_dir = file.path(out_dir, "gene_cluster_scale"))
     message("     - Plotting genes Scaled")
 
     gene_plots_by_gene(long_norm, long_scale, genes_of_interest,
@@ -680,7 +685,8 @@ do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
 
 #' @title Cluster Assignments
 #' @description Get the cluster assignment for all genes
-#' @param hm_now_drawn A ComplexHeatmap object invoked with `draw'.
+#' @param hm_now_drawn A ComplexHeatmap object invoked with
+#'     \code{draw}.
 #' @param matobj A matrix with genes as rownames.
 #' @return A two column data frame of Gene and Cluster in ascending
 #'     order of cluster number.
@@ -839,7 +845,7 @@ better_pheatmap <- function(ph) {
 #' @param min_occur A positive integer. A threshold (greater than or
 #'     equal to) the number of times a gene is detected in a sample,
 #'     across all samples (e.g. Gene X is only kept if it appears in
-#'     10 samples with a value greater than the `min_detect'
+#'     10 samples with a value greater than the \code{min_detect}
 #'     threshold. Default value is 3.
 #' @param min_detect A positive integer. A threshold (greater than or
 #'     equal to) for the minimum expression a gene can have for it to
@@ -894,13 +900,13 @@ high_quality_genes <- function(sam_mat,
 #' @param outdir An output directory path fro the plots
 #' @param volcano_params A list of two components: "global" and
 #'     "zoomed" each with "curve" and "curve_show" components
-#'     describing the curve to fit to the volcano plots by `sd`
-#'     (standard deviation from center mean), `sc` vertical scale
-#'     factor, `offset` vertical offset. Extra params for the `zoomed`
-#'     component are `ylim`, `padj` an upper limit on the adjusted
-#'     p-value, `lfc` and an upper-limit on the log2 fold change. If
-#'     `curve_show` is set to FALSE in either `global` or `zoomed`
-#'     then no curve is shown.
+#'     describing the curve to fit to the volcano plots by \code{sd}
+#'     (standard deviation from center mean), \code{sc} vertical scale
+#'     factor, \code{offset} vertical offset. Extra params for the
+#'     \code{zoomed} component are \code{ylim}, \code{padj} an upper
+#'     limit on the adjusted p-value, \code{lfc} and an upper-limit on
+#'     the log2 fold change. If \code{curve_show} is set to FALSE in
+#'     either \code{global} or \code{zoomed} then no curve is shown.
 #' @return None.
 #' @examples
 #' n <- 100
@@ -1037,8 +1043,9 @@ volcano_plot <- function(dsqres, degenes, title,
 #' @description Generate cluster gene plots for various score
 #'     thresholds
 #' @param tab A dataframe with long plotting data containing at least
-#'     the columns `gene`, `cluster', `condition', `value', `time',
-#'     and 'score'. It can take normalised or scaled values as input.
+#'     the columns \code{gene}, \code{cluster}, \code{condition},
+#'     \code{value}, \code{time}, and \code{score}. It can take
+#'     normalised or scaled values as input.
 #' @param score_thresh Vector of numerics depicting cluster score
 #'     thresholds to filter for high quality genes in each cluster
 #'     before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}
@@ -1046,7 +1053,7 @@ volcano_plot <- function(dsqres, degenes, title,
 #'     plots. Default value is "gene_cluster"
 #' @return A single patchwork plot containing cluster gene plots for
 #'     different score thresholds. This plot is also saved to the
-#'     `out_dir' directory under the pattern
+#'     \code{out_dir} directory under the pattern
 #'     "gene_plots-k*_montage.svg"
 #' @examples
 #' n <- 100
@@ -1088,8 +1095,9 @@ gene_clusters_by_score <- function(tab,
 #' @description Generate ribbon and line plots of gene expression data
 #'     split by cluster.
 #' @param tab A dataframe with long plotting data containing at least
-#'     the columns `cluster', `condition', `value', `time', and
-#'     'score'. It can take normalised or scaled values as input.
+#'     the columns \code{cluster}, \code{condition}, \code{value},
+#'     \code{time}, and \code{score}. It can take normalised or scaled
+#'     values as input.
 #' @param score_thresh numeric threshold to filter out genes with
 #'     correlation scores not matching these values
 #' @param out_dir a string depicting the directory of where the plots
@@ -1141,7 +1149,7 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
 #' @param norm_long A long dataframe of normalized values. Must
 #'     contain columns of: gene, condition, time, replicate, value.
 #' @param scale_long A long dataframe of scaled values. Same format as
-#'     `norm_long'.
+#'     \code{norm_long}.
 #' @param genes_of_interest A named list of gene vectors. A list of
 #'     genes which are referenced by specific names. Unique plots will
 #'     be generated for list. e.g. list(mygeneset1 = c("Msgn1",
@@ -1190,7 +1198,7 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
 #'     long table data and save to file, as well as return the plot.
 #' @param long_data A tibble containing columns: gene, time, condition, value
 #' @param genes_found A vector of gene names
-#' @param glist_name A string for the collective name for said vector of genes
+#' @param glist_name A string for the group name for said vector of genes
 #' @param ylab_text A string for Y-axis label text
 #' @param title_text A string for the title text
 #' @param out_dir A string denoting the output directory to store
@@ -1244,11 +1252,11 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
 
 #' @title Generate a label table
 #' @description Counts how many genes in each cluster for use as
-#'     plotting labels in `cluster_gene_plots'
-#' @param tabn a gene table of long data with a `cluster', 'gene' and
-#'     'value' field.
-#' @return a table with columns of `cluster', `n' for how many genes
-#'     in that cluster, and `ftext' for labelling.
+#'     plotting labels in \code{cluster_gene_plots}
+#' @param tabn a gene table of long data with a \code{cluster},
+#'     \code{gene} and \code{value} field.
+#' @return a table with columns of \code{cluster}, \code{n} for how
+#'     many genes in that cluster, and \code{ftext} for labelling.
 #' @examples
 #' tabn <- data.frame(
 #'     cluster = c(1, 1, 2, 2),
@@ -1275,9 +1283,9 @@ generate_labelling_table <- function(tabn) {
 }
 
 #' @title Number of clusters in tabs
-#' @description Count the number of unique values in the `cluster'
-#'     column of a table
-#' @param tab Dataframe. Must contain a `cluster' vector
+#' @description Count the number of unique values in the
+#'     \code{cluster} column of a table
+#' @param tab Dataframe. Must contain a \code{cluster} vector
 #' @return Positive integer.
 #' @examples
 #' RNASeqHelper:::num_clusters(
