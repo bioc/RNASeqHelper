@@ -386,6 +386,7 @@ do_kmeans <- function(norm_counts, transformed_counts, phenotype_data,
 #'     tables and plots.
 #' @param heatprefix String to prefix heatmap plot filenames
 #' @param plot_title String depicting title to embed into plot
+#' @return None.
 kmeans_heatmaps <- function(norms, trans, pheno,
                             genes, sample_columns = NULL,
                             dsqres, k, out_dir, heatprefix, plot_title) {
@@ -1160,6 +1161,7 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
 #'     and for the normalized and scaled.
 #' @param out_dir A string denoting the output directory to store
 #'     plots. Default is is "gene_lists".
+#' @return None.
 gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
                                 outprefix = "gene.lists",
                                 out_dir = "gene_lists") {
