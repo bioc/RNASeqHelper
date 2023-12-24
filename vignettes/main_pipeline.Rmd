@@ -5,7 +5,7 @@ author: "Mehmet Tekman"
 output:
   html_document:
     toc: true
-    toc_depth: 3
+    toc_depth: 4
 vignette: >
   %\VignetteIndexEntry{Example CustomGenome analysis}
   %\VignetteEngine{knitr::rmarkdown}
@@ -18,7 +18,15 @@ knitr::opts_chunk$set(fig.width=8, fig.height=8, dpi=50, dev='jpeg')
 
 # RNASeqHelper
 
-This vignette enables an RNA-seq analysis
+This vignette walks through an RNA-seq analysis using simulated datasets.
+
+Let us first load the library
+
+```{r}
+library(RNASeqHelper)
+```
+
+
 
 ## Input Matrices and Annotation
 
@@ -85,7 +93,7 @@ gois_list <- list(apple = paste0("G", 100:105),
 gois_list
 ```
 
-## RNA-Seq Analysis
+## RNA-Seq Analysis (Exploratory)
 
 Let us now perform an analysis.
 
@@ -191,6 +199,23 @@ used to cluster the samples pairwise and globally for different Kmeans
 k-values.
 
 The results of all can be found in the "myanalysis/2_heatmaps" folder.
+
+## RNA-Seq Analysis (Pipeline)
+
+It is entirely possible to run the complete analysis above with a single function:
+
+
+```{r}
+rnaseqhelper(mat, phenotype_data, out_dir="myanalysis2", 
+             numer = "green", denom = "blue",
+             keep_params = list(min_occur=8, min_detect=20),
+             heat_params = list(top_ngenes_tocluster = 2000,
+                                top_ngenes_tohighlight = 25,
+                                score_thresh = c(0.5, 0.9),
+                                genes_of_interest = gois_list,
+                                kmeans_list = c(2,5,8)))
+
+```
 
 
 ## SessionInfo
