@@ -20,12 +20,49 @@ knitr::opts_chunk$set(fig.width=8, fig.height=8, dpi=50, dev='jpeg')
 
 This vignette enables an RNA-seq analysis
 
-
 ## Input Matrices and Annotation
 
+Every RNA-seq analysis begins with two datasets:
+
+- The input matrix
+- The phenotype data
 
 
-## Analysis
+#### Simulate A Dataset
+
+Here we create 9 RNA samples with slighly varying means and SDs, for 10000 genes.
+
+```{r}
+num_genes <- 10000
+mean_sd <- list(c(10,10), c(10,10), c(10,10),
+                c(20,20), c(20,20), c(30,30),
+                c(90,90), c(90,90), c(90,90))
+
+mat <- as.matrix(
+    do.call(cbind,
+       lapply(seq_along(mean_sd), function(i){
+    x = mean_sd[[i]]
+    tab <- matrix(as.integer(rnorm(num_genes, x[[1]], x[[2]])), ncol=1,
+                  dimnames=list(paste0("G", 1:num_genes), paste0("S", i)))
+    tab = tab - min(tab) ## no zeroes
+    return(tab)
+})))
+
+phenotype_data = data.frame(sample = colnames(mat),
+           condition = c(rep("green", 3),rep("red", 3), rep("blue", 3)),
+           time = c(5, 5, 15, 10, 10, 15, 5, 10, 15))
+
+
+```
+
+So now we have a matrix of 9 samples and 10000 genes, and accompanying
+phenotype data for the samples.
+
+
+#### Genes of Interest
+
+We also might want some gene plots for some genes of interest. We can
+either load some pre-defined lists via:
 
 ```{r}
 
@@ -33,24 +70,99 @@ gois_list <- source(system.file("extdata", "gois.R", package="RNASeqHelper"))
 gois_list
 ```
 
+Or we can make our own. Note that the genes above are good defaults
+for real (Mouse) datasets, but will not work in the remainder of this
+vignette.
 
-```R
-tab = as.matrix(do.call(cbind, 
-                        lapply(list.files("3_counts/", pattern="*.tab",
-                            full.names=T), 
-                        function(x){ read.table(x,row.names=1,
-                        check.names=FALSE) })))
-colnames(tab) = gsub(
-    "\\.TAF2_dIDR", "",
-    gsub("\\.align.*", "", list.files("3_counts/", pattern="*.tab"))
-)                 
+We will instead construct our own, following the schema of "name" ->
+vector of genes.
 
-phenotype_data =  data.frame(Sample = colnames(tab),
-            Condition = gsub("_\\d$", "", colnames(tab)),
-            Replicate = gsub("^.*_", "", colnames(tab)))
+```{r}
 
-keep_genes = high_quality_genes(tab, min_occur=3, min_detect=2, 
-                                out_dir="test/1_genes")
+gois_list <- list(apple = paste0("G", 100:105),
+                  banana = paste0("G", 810:819),
+                  carrot = paste0("G", 256:260))
+gois_list
+```
+
+## RNA-Seq Analysis
+
+Let us now perform an analysis.
+
+It is possible to do the entire analysis with a single call to the
+`rnaseqhelper` function, but it's sometimes better to perform a more
+exploratory analysis.
+
+
+#### Selecting for Informative Genes
+
+Not all of our genes will be useful for RNA-seq analysis, so we need
+to select for an informative subset using two parameters:
+
+- `min_detect`, the minimum threshold of expression a gene must
+  express in a sample before it can count as "detected".
+- `min_occur`, the minimum occurences of a "detected" gene across all
+  samples.
+
+Here we will use 3 and 2, selecting for genes that occur in at least 3
+samples with a minumum expression of 2.
+
+```{r}
+keep_genes <- high_quality_genes(mat, min_occur=3, min_detect=2,
+                                out_dir="myanalysis/0_genes")
+```
+
+We are told that no genes were dropped.
+
+We can inspect this ourselves by examining the output file
+"myanalysis/0_genes/smallestGroup3-detected2-keep_genes".
+
+Usually we expect a few genes to be dropped, so let's increase the
+parameters:
+
+```{r}
+keep_genes <- high_quality_genes(mat, min_occur=8, min_detect=20,
+                                out_dir="myanalysis/0_genes")
+```
+
+Here we see 87 genes are dropped, leaving us with 92% of the data
+still, and we can once again inspect this directly by looking at the
+"myanalysis/0_genes/smallestGroup9-detected10-keep_genes" file
+
+
+#### Validating for Informative Genes
+
+We will not perform a preliminary DESeq2 analysis using our filtered
+genes and using the `phenotype_data` to select for sample groups.
+
+The `condition` column in the `phenotype_data` is used to group are
+samples, and is an implicit declaration.
+
+```{r}
+res <- run_deseq(mat, keep_genes, phenotype_data,
+         out_dir = "myanalysis/1_matrices_and_deseq")
+```
+
+Here tables and plots were written to the "1_matrices_and_deseq" folder:
+
+- `deseq2obj.rds`, an RData object of the DESeq2 object, useful mostly for debugging.
+- `phenotype_data.tsv`, the input phenotype data table.
+- `input_matrix.tsv`, the input matrix table.
+- `input_matrix.filt.tsv`, the above matrix, filtered for the genes kept.
+- `input_matrix.filt.normalized.tsv`, the above filtered matrix, normalized by DESeq2.
+- `input_matrix.filt.normalized.vst_corrected.tsv`, the filtered matrix with a Variance Stabilizing Transform to correct the data.
+- `input_matrix.filt.normalized.vst_corrected_PCA.pdf`, a PCA of the normalized and transformed values. 
+
+What you should be seeing at this stage are samples of the same type
+clustered together. The transformed values might cluster better than
+the normalized values, so it is up to you which one of these you
+choose for downstream analysis.
+
+
+
+
+
+
 
 res = run_deseq(tab, keep_genes, phenotype_data)
 
