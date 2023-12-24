@@ -263,6 +263,7 @@ top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
 #' @param out_dirprefix A character prefix outlining the directory and
 #'     basename in which plots and tables will be deployed.
 #' @return Void. Plots are deposited to the output directory.
+#' @export
 pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                                     numer, denom,
                                     top_ngenes_tocluster = 2000,
