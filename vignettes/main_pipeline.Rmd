@@ -132,7 +132,7 @@ still, and we can once again inspect this directly by looking at the
 
 #### Validating for Informative Genes
 
-We will not perform a preliminary DESeq2 analysis using our filtered
+We will now perform a preliminary DESeq2 analysis using our filtered
 genes and using the `phenotype_data` to select for sample groups.
 
 The `condition` column in the `phenotype_data` is used to group are
@@ -159,29 +159,39 @@ the normalized values, so it is up to you which one of these you
 choose for downstream analysis.
 
 
+#### Heatmaps and Volcano Plots
 
+We will now perform the rest of the analysis, by searching for
+differentially expressed (DE) genes via contrasting sample groups
+against one another, and producing pairwise (sample group1 vs sample
+group2) kmeans heatmaps and global (all samples) kmeans heatmaps for a
+variety of k-values.
 
+Let's contrast our green and blue samples against one another.
 
+We will be using the output of the `run_deseq` function in the last
+step which we called `res`. We will also use our genes of interest.
 
-
-res = run_deseq(tab, keep_genes, phenotype_data)
-
-pca_and_matrices(res, out_dir="test/input_matrices_and_deseq")
-
+```{r}
 pairwise_hmap_volcano(res$ddsObj,
                     transformed_counts = assay(res$vFalse),
-                    numer = "NLS", denom = "TAF2",
+                    numer = "green", denom = "blue",
                     top_ngenes_tocluster = 2000,
                     top_ngenes_tohighlight = 25,
-                    lFC_zoom = 1.5, pAdj_zoom = 20,
-                    kmeans = c(2,5,8),
-                    out_dirprefix="test/outputs")
-
-## Todo gene plots
-
-
+                    score_thresh = c(0.5, 0.9),
+                    genes_of_interest = gois_list,
+                    kmeans_list = c(2,5,8),
+                    out_dirprefix="myanalysis/2_heatmaps")
 
 ```
+
+The volcano plots are generated from the contrasts of our two sample
+groups "green" and "blue". The DE genes from these contrasts are then
+used to cluster the samples pairwise and globally for different Kmeans
+k-values.
+
+The results of all can be found in the "myanalysis/2_heatmaps" folder.
+
 
 ## SessionInfo
 
