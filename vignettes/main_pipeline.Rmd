@@ -3,13 +3,13 @@ title: "RNASeqHelper reference manual"
 date: "`r Sys.Date()`"
 author: "Mehmet Tekman"
 output:
-  html_document:
-    toc: true
-    toc_depth: 4
+    html_document:
+        toc: true
+        toc_depth: 4
 vignette: >
-  %\VignetteIndexEntry{Example CustomGenome analysis}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+    %\VignetteIndexEntry{Example CustomGenome analysis}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
 ---
 \tableofcontents
 ```{r echo=FALSE}
@@ -38,7 +38,8 @@ Every RNA-seq analysis begins with two datasets:
 
 #### Simulate A Dataset
 
-Here we create 9 RNA samples with slighly varying means and SDs, for 10000 genes.
+Here we create 9 RNA samples with slighly varying means and SDs, for
+10000 genes.
 
 ```{r}
 num_genes <- 10000
@@ -48,18 +49,17 @@ mean_sd <- list(c(10,10), c(10,10), c(10,10),
 
 mat <- as.matrix(
     do.call(cbind,
-       lapply(seq_along(mean_sd), function(i){
+        lapply(seq_along(mean_sd), function(i){
     x = mean_sd[[i]]
     tab <- matrix(as.integer(rnorm(num_genes, x[[1]], x[[2]])), ncol=1,
-                  dimnames=list(paste0("G", 1:num_genes), paste0("S", i)))
+                dimnames=list(paste0("G", 1:num_genes), paste0("S", i)))
     tab = tab - min(tab) ## no zeroes
     return(tab)
 })))
 
 phenotype_data = data.frame(sample = colnames(mat),
-           condition = c(rep("green", 3),rep("red", 3), rep("blue", 3)),
-           time = c(5, 5, 15, 10, 10, 15, 5, 10, 15))
-
+            condition = c(rep("green", 3),rep("red", 3), rep("blue", 3)),
+            time = c(5, 5, 15, 10, 10, 15, 5, 10, 15))
 
 ```
 
@@ -88,8 +88,8 @@ vector of genes.
 ```{r}
 
 gois_list <- list(apple = paste0("G", 100:105),
-                  banana = paste0("G", 810:819),
-                  carrot = paste0("G", 256:260))
+                banana = paste0("G", 810:819),
+                carrot = paste0("G", 256:260))
 gois_list
 ```
 
@@ -108,9 +108,9 @@ Not all of our genes will be useful for RNA-seq analysis, so we need
 to select for an informative subset using two parameters:
 
 - `min_detect`, the minimum threshold of expression a gene must
-  express in a sample before it can count as "detected".
+    express in a sample before it can count as "detected".
 - `min_occur`, the minimum occurences of a "detected" gene across all
-  samples.
+    samples.
 
 Here we will use 3 and 2, selecting for genes that occur in at least 3
 samples with a minumum expression of 2.
@@ -148,18 +148,22 @@ samples, and is an implicit declaration.
 
 ```{r}
 res <- run_deseq(mat, keep_genes, phenotype_data,
-         out_dir = "myanalysis/1_matrices_and_deseq")
+        out_dir = "myanalysis/1_matrices_and_deseq")
 ```
 
 Here tables and plots were written to the "1_matrices_and_deseq" folder:
 
-- `deseq2obj.rds`, an RData object of the DESeq2 object, useful mostly for debugging.
+- `deseq2obj.rds`, an RData object of the DESeq2 object,
+    useful mostly for debugging.
 - `phenotype_data.tsv`, the input phenotype data table.
 - `input_matrix.tsv`, the input matrix table.
 - `input_matrix.filt.tsv`, the above matrix, filtered for the genes kept.
-- `input_matrix.filt.normalized.tsv`, the above filtered matrix, normalized by DESeq2.
-- `input_matrix.filt.normalized.vst_corrected.tsv`, the filtered matrix with a Variance Stabilizing Transform to correct the data.
-- `input_matrix.filt.normalized.vst_corrected_PCA.pdf`, a PCA of the normalized and transformed values. 
+- `input_matrix.filt.normalized.tsv`, the above filtered matrix,
+    normalized by DESeq2.
+- `input_matrix.filt.normalized.vst_corrected.tsv`, the filtered matrix with
+    a Variance Stabilizing Transform to correct the data.
+- `input_matrix.filt.normalized.vst_corrected_PCA.pdf`, a PCA of the
+    normalized and transformed values. 
 
 What you should be seeing at this stage are samples of the same type
 clustered together. The transformed values might cluster better than
@@ -202,14 +206,15 @@ The results of all can be found in the "myanalysis/2_heatmaps" folder.
 
 ## RNA-Seq Analysis (Pipeline)
 
-It is entirely possible to run the complete analysis above with a single function:
+It is entirely possible to run the complete analysis above with a
+single function:
 
 
 ```{r}
 rnaseqhelper(mat, phenotype_data, out_dir="myanalysis2", 
-             numer = "green", denom = "blue",
-             keep_params = list(min_occur=8, min_detect=20),
-             heat_params = list(top_ngenes_tocluster = 2000,
+            numer = "green", denom = "blue",
+            keep_params = list(min_occur=8, min_detect=20),
+            heat_params = list(top_ngenes_tocluster = 2000,
                                 top_ngenes_tohighlight = 25,
                                 score_thresh = c(0.5, 0.9),
                                 genes_of_interest = gois_list,

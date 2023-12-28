@@ -28,5 +28,5 @@ P-value. Write the result to file as well as return it.
 }
 \examples{
 dsqres <- data.frame(mLog10Padj = 1:10 / 10, gene = paste0("G", 1:10))
-RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = "/tmp", prefix = "test")
+RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = tempdir(), prefix = "test")
 }

@@ -7,7 +7,7 @@
 rnaseqhelper(
     tab,
     phenotype_data,
-    out_dir = "/tmp",
+    out_dir = tempdir(),
     numer,
     denom,
     keep_params = list(),
@@ -65,7 +65,7 @@ phenotype_data <- data.frame(
     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
 )
 rnaseqhelper(tab, phenotype_data,
-    out_dir = "/tmp", "green", "red",
+    out_dir = tempdir(), "green", "red",
     heat_params = list(
         score_thresh = c(0.2, 0.5),
         kmeans_list = 2

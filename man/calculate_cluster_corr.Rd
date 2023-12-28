@@ -35,5 +35,5 @@ clust_assign <- data.frame(
     cluster = c(rep(1, n / 50), rep(2, n / 50)),
     value = rnorm(n, 100, 10)
 )
-ca <- calculate_cluster_corr(clust_assign, scale_mat, "/tmp", "red")
+ca <- calculate_cluster_corr(clust_assign, scale_mat, tempdir(), "red")
 }

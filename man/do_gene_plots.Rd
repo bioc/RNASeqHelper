@@ -69,5 +69,5 @@ genes_of_interest <- paste0("G", 5:50)
 res <- do_gene_plots(norm_counts, scale_mat, pheno,
                     gene_cluster_scores, score_thresh,
                     genes_of_interest,
-                    out_dir = "/tmp")
+                    out_dir = tempdir())
 }

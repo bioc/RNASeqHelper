@@ -39,5 +39,5 @@ phenotype_data <- data.frame(
     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
 )
 keep_genes <- paste0("G", 1:n)
-res <- run_deseq(tab, keep_genes, phenotype_data, "/tmp")
+res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
 }

@@ -11,12 +11,11 @@ test_that("rnaseqhelper", {
         time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
     )
     rnaseqhelper(tab, phenotype_data,
-                 out_dir = "/tmp", "green", "red",
-                 heat_params = list(
-                     score_thresh = c(0.2, 0.5),
-                     kmeans_list = 2
-                 )
-                 )
+                out_dir = tempdir(), "green", "red",
+                heat_params = list(
+                    score_thresh = c(0.2, 0.5),
+                    kmeans_list = 2
+                ))
 })
 
 test_that("run_deseq", {
@@ -31,12 +30,12 @@ test_that("run_deseq", {
         time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
     )
     keep_genes <- paste0("G", 1:n)
-    res <- run_deseq(tab, keep_genes, phenotype_data, "/tmp")
+    res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
 })
 
 test_that("top_n_genes", {
     dsqres <- data.frame(mLog10Padj = 1:10 / 10, gene = paste0("G", 1:10))
-    RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = "/tmp", prefix = "test")
+    RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = tempdir(), prefix = "test")
 })
 
 test_that("heatmap_with_geneplots", {
@@ -55,8 +54,8 @@ test_that("heatmap_with_geneplots", {
         score_thresh = c(0.2, 0.3)
     )
     res <- heatmap_with_geneplots(norm_counts, pheno, 2,
-                                  genes,
-                                  out_dir = "/tmp")
+                                genes,
+                                out_dir = tempdir())
 })
 
 test_that("calculate_cluster_corr", {
@@ -69,7 +68,7 @@ test_that("calculate_cluster_corr", {
         cluster = c(rep(1, n / 50), rep(2, n / 50)),
         value = rnorm(n, 100, 10)
     )
-    ca <- calculate_cluster_corr(clust_assign, scale_mat, "/tmp", "red")
+    ca <- calculate_cluster_corr(clust_assign, scale_mat, tempdir(), "red")
 })
 
 test_that("do_gene_plots", {
@@ -93,9 +92,9 @@ test_that("do_gene_plots", {
     score_thresh <- c(0.2, 0.3)
     genes_of_interest <- paste0("G", 5:50)
     res <- do_gene_plots(norm_counts, scale_mat, pheno,
-                         gene_cluster_scores, score_thresh,
-                         genes_of_interest,
-                         out_dir = "/tmp")
+                        gene_cluster_scores, score_thresh,
+                        genes_of_interest,
+                        out_dir = tempdir())
 })
 
 test_that("single_kmeans_heatmap", {
@@ -105,16 +104,16 @@ test_that("single_kmeans_heatmap", {
     colnames(scale_mat) <- paste0("S", 1:n)
     top_genes <- paste0("G", n - 50:n - 20)
     res <- single_kmeans_heatmap(scale_mat, 2, top_genes, "test", "test",
-                                 out_dir = "/tmp", "test", 7, 7)
+                                out_dir = tempdir(), "test", 7, 7)
 })
 
 test_that("high_quality_genes", {
     sam_mat <- matrix(1:100, nrow = 10,
-                      dimnames = list(
-                          paste0("G", 1:10),
-                          paste0("C", 1:10)
-                      ))
-    keep <- high_quality_genes(sam_mat, 10, 7, "/tmp")
+                    dimnames = list(
+                        paste0("G", 1:10),
+                        paste0("C", 1:10)
+                    ))
+    keep <- high_quality_genes(sam_mat, 10, 7, tempdir())
     names(keep) == paste0("G", 7:10)
 })
 
@@ -129,15 +128,15 @@ test_that("do_volcanos", {
     )
     top_genes_tohighlight <- paste0("G", (n-50):(n-20))
     res <- RNASeqHelper:::do_volcanos(dsqres, top_genes_tohighlight,
-                                      "my plot", "/tmp")
+                                    "my plot", tempdir())
 })
 
 test_that("volcano_plot", {
     n <- 100
     dsqres <- data.frame(gene = paste0("G", 1:n),
-                         data = rnorm(n, 5, 2),
-                         log2FoldChange = 1e-5,
-                         padj = 1 / rnorm(n, 5, 2))
+                        data = rnorm(n, 5, 2),
+                        log2FoldChange = 1e-5,
+                        padj = 1 / rnorm(n, 5, 2))
     degenes <- paste0("G", (n-50):(n-20))
     res <- volcano_plot(dsqres, degenes, "my plot")
 })
@@ -152,7 +151,8 @@ test_that("gene_clusters_by_score", {
         time = as.integer(rnorm(n, 2, 0.5) + 1) * 5,
         score = as.integer(rnorm(n, 2, 0.5) + 1) / 4
     )
-    plot <- gene_clusters_by_score(tab, c(0.2, 0.7), out_dir = "/tmp")
+    plot <- gene_clusters_by_score(tab, c(0.2, 0.7),
+                                    out_dir = tempdir())
 })
 
 test_that("generate_labelling_table", {

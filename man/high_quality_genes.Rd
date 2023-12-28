@@ -39,6 +39,6 @@ sam_mat <- matrix(1:100, nrow = 10, dimnames = list(
     paste0("G", 1:10),
     paste0("C", 1:10)
 ))
-keep <- high_quality_genes(sam_mat, 10, 7, "/tmp")
+keep <- high_quality_genes(sam_mat, 10, 7, tempdir())
 names(keep) == paste0("G", 7:10)
 }

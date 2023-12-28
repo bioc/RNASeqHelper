@@ -43,5 +43,5 @@ tab <- data.frame(
     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5,
     score = as.integer(rnorm(n, 2, 0.5) + 1) / 4
 )
-plot <- gene_clusters_by_score(tab, c(0.2, 0.7), out_dir = "/tmp")
+plot <- gene_clusters_by_score(tab, c(0.2, 0.7), out_dir = tempdir())
 }

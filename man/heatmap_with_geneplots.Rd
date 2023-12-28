@@ -64,5 +64,5 @@ genes <- list(highlight = paste0("G", 1:10),
             interest = paste0("G", c(2,3)),
             score_thresh = c(0.2, 0.3))
 res <- heatmap_with_geneplots(norm_counts, pheno, 2,
-                            genes, out_dir = "/tmp")
+                            genes, out_dir = tempdir())
 }

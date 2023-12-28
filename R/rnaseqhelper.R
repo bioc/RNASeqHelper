@@ -63,14 +63,14 @@
 #'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
 #' )
 #' rnaseqhelper(tab, phenotype_data,
-#'     out_dir = "/tmp", "green", "red",
+#'     out_dir = tempdir(), "green", "red",
 #'     heat_params = list(
 #'         score_thresh = c(0.2, 0.5),
 #'         kmeans_list = 2
 #'     )
 #' )
 #' @export
-rnaseqhelper <- function(tab, phenotype_data, out_dir = "/tmp",
+rnaseqhelper <- function(tab, phenotype_data, out_dir = tempdir(),
                         numer, denom,
                         keep_params = list(),
                         heat_params = list(), volcano_params = list()) {
@@ -122,7 +122,7 @@ rnaseqhelper <- function(tab, phenotype_data, out_dir = "/tmp",
 #'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
 #' )
 #' keep_genes <- paste0("G", 1:n)
-#' res <- run_deseq(tab, keep_genes, phenotype_data, "/tmp")
+#' res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
 #' @export
 run_deseq <- function(tab, keep_genes, phenotype_data, out_dir) {
 
@@ -219,7 +219,7 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 #' @return A vector of N gene names
 #' @examples
 #' dsqres <- data.frame(mLog10Padj = 1:10 / 10, gene = paste0("G", 1:10))
-#' RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = "/tmp", prefix = "test")
+#' RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = tempdir(), prefix = "test")
 top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
     tgenes <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
                 head(top_ng))$gene
@@ -472,7 +472,7 @@ kmeans_heatmaps <- function(norms, trans, pheno,
 #'              interest = paste0("G", c(2,3)),
 #'              score_thresh = c(0.2, 0.3))
 #' res <- heatmap_with_geneplots(norm_counts, pheno, 2,
-#'                               genes, out_dir = "/tmp")
+#'                               genes, out_dir = tempdir())
 #' @export
 heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
                                     genes, out_dir = "heatmaps_k",
@@ -586,7 +586,7 @@ calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
 #'     cluster = c(rep(1, n / 50), rep(2, n / 50)),
 #'     value = rnorm(n, 100, 10)
 #' )
-#' ca <- calculate_cluster_corr(clust_assign, scale_mat, "/tmp", "red")
+#' ca <- calculate_cluster_corr(clust_assign, scale_mat, tempdir(), "red")
 #' @export
 calculate_cluster_corr <- function(clust_assign, scale_mat,
                                     out_dir, prefix_str) {
@@ -648,7 +648,7 @@ calculate_cluster_corr <- function(clust_assign, scale_mat,
 #' res <- do_gene_plots(norm_counts, scale_mat, pheno,
 #'                      gene_cluster_scores, score_thresh,
 #'                      genes_of_interest,
-#'                      out_dir = "/tmp")
+#'                      out_dir = tempdir())
 #' @export
 do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
                         gene_cluster_scores, score_thresh,
@@ -734,7 +734,7 @@ cluster_assignments <- function(hm_now_drawn, matobj) {
 #' colnames(scale_mat) <- paste0("S", 1:n)
 #' top_genes <- paste0("G", n - 50:n - 20)
 #' res <- single_kmeans_heatmap(scale_mat, 2, top_genes, "test", "test",
-#'                              out_dir = "/tmp", "test", 7, 7)
+#'                              out_dir = tempdir(), "test", 7, 7)
 #' @export
 single_kmeans_heatmap <- function(scale_mat, k, top_genes,
                                     prefix_title, top_title,
@@ -862,7 +862,7 @@ better_pheatmap <- function(ph) {
 #'     paste0("G", 1:10),
 #'     paste0("C", 1:10)
 #' ))
-#' keep <- high_quality_genes(sam_mat, 10, 7, "/tmp")
+#' keep <- high_quality_genes(sam_mat, 10, 7, tempdir())
 #' names(keep) == paste0("G", 7:10)
 #' @export
 high_quality_genes <- function(sam_mat,
@@ -921,7 +921,7 @@ high_quality_genes <- function(sam_mat,
 #' )
 #' top_genes_tohighlight <- paste0("G", (n-50):(n-20))
 #' res <- RNASeqHelper:::do_volcanos(dsqres, top_genes_tohighlight,
-#'                                   "my plot", "/tmp")
+#'                                   "my plot", tempdir())
 do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
                         volcano_params = NULL) {
     if (is.null(volcano_params)) {
@@ -1060,14 +1060,14 @@ volcano_plot <- function(dsqres, degenes, title,
 #' @examples
 #' n <- 100
 #' tab <- data.frame(
-#'     gene = paste0("G", 1:n),
-#'     cluster = as.integer(rnorm(n, 5, 2) + 1),
-#'     condition = c(rep("red", n/2), rep("green", n/2)),
-#'     value = rnorm(n, 10, 2) + 1,
-#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5,
-#'     score = as.integer(rnorm(n, 2, 0.5) + 1) / 4
+#'      gene = paste0("G", 1:n),
+#'      cluster = as.integer(rnorm(n, 5, 2) + 1),
+#'      condition = c(rep("red", n/2), rep("green", n/2)),
+#'      value = rnorm(n, 10, 2) + 1,
+#'      time = as.integer(rnorm(n, 2, 0.5) + 1) * 5,
+#'      score = as.integer(rnorm(n, 2, 0.5) + 1) / 4
 #' )
-#' plot <- gene_clusters_by_score(tab, c(0.2, 0.7), out_dir = "/tmp")
+#' plot <- gene_clusters_by_score(tab, c(0.2, 0.7), out_dir = tempdir())
 #' @export
 gene_clusters_by_score <- function(tab,
                                 score_thresh = c(0, 0.5, 0.9, 0.99),

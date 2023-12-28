@@ -52,5 +52,5 @@ rownames(scale_mat) <- paste0("G", 1:n)
 colnames(scale_mat) <- paste0("S", 1:n)
 top_genes <- paste0("G", n - 50:n - 20)
 res <- single_kmeans_heatmap(scale_mat, 2, top_genes, "test", "test",
-                            out_dir = "/tmp", "test", 7, 7)
+                            out_dir = tempdir(), "test", 7, 7)
 }

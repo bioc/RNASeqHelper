@@ -49,5 +49,5 @@ dsqres <- data.frame(
 )
 top_genes_tohighlight <- paste0("G", (n-50):(n-20))
 res <- RNASeqHelper:::do_volcanos(dsqres, top_genes_tohighlight,
-                                    "my plot", "/tmp")
+                                "my plot", tempdir())
 }
