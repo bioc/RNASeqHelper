@@ -117,25 +117,25 @@ samples with a minumum expression of 2.
 
 ```{r}
 keep_genes <- high_quality_genes(mat, min_occur=3, min_detect=2,
-                                out_dir="myanalysis/0_genes")
+                                out_dir="~/myanalysis/0_genes")
 ```
 
 We are told that no genes were dropped.
 
 We can inspect this ourselves by examining the output file
-"myanalysis/0_genes/smallestGroup3-detected2-keep_genes".
+"~/myanalysis/0_genes/smallestGroup3-detected2-keep_genes".
 
 Usually we expect a few genes to be dropped, so let's increase the
 parameters:
 
 ```{r}
 keep_genes <- high_quality_genes(mat, min_occur=8, min_detect=20,
-                                out_dir="myanalysis/0_genes")
+                                out_dir="~/myanalysis/0_genes")
 ```
 
 Here we see 87 genes are dropped, leaving us with 92% of the data
 still, and we can once again inspect this directly by looking at the
-"myanalysis/0_genes/smallestGroup9-detected10-keep_genes" file
+"~/myanalysis/0_genes/smallestGroup9-detected10-keep_genes" file
 
 
 #### Validating for Informative Genes
@@ -148,7 +148,7 @@ samples, and is an implicit declaration.
 
 ```{r}
 res <- run_deseq(mat, keep_genes, phenotype_data,
-        out_dir = "myanalysis/1_matrices_and_deseq")
+        out_dir = "~/myanalysis/1_matrices_and_deseq")
 ```
 
 Here tables and plots were written to the "1_matrices_and_deseq" folder:
@@ -192,8 +192,8 @@ pairwise_hmap_volcano(res$ddsObj,
                     top_ngenes_tohighlight = 25,
                     score_thresh = c(0.5, 0.9),
                     genes_of_interest = gois_list,
-                    kmeans_list = c(2,5,8),
-                    out_dirprefix="myanalysis/2_heatmaps")
+                    kmeans_list = c(2,5),
+                    out_dirprefix="~/myanalysis/2_heatmaps")
 
 ```
 
@@ -202,23 +202,24 @@ groups "green" and "blue". The DE genes from these contrasts are then
 used to cluster the samples pairwise and globally for different Kmeans
 k-values.
 
-The results of all can be found in the "myanalysis/2_heatmaps" folder.
+The results of all can be found in the "~/myanalysis/2_heatmaps" folder.
 
 ## RNA-Seq Analysis (Pipeline)
 
 It is entirely possible to run the complete analysis above with a
-single function:
+single function. Here we change some parameters to speed up the
+analysis.
 
 
 ```{r}
-rnaseqhelper(mat, phenotype_data, out_dir="myanalysis2", 
+rnaseqhelper(mat, phenotype_data, out_dir="~/myanalysis2",
             numer = "green", denom = "blue",
             keep_params = list(min_occur=8, min_detect=20),
-            heat_params = list(top_ngenes_tocluster = 2000,
+            heat_params = list(top_ngenes_tocluster = 1000,
                                 top_ngenes_tohighlight = 25,
-                                score_thresh = c(0.5, 0.9),
-                                genes_of_interest = gois_list,
-                                kmeans_list = c(2,5,8)))
+                                score_thresh = c(0.9),
+                                genes_of_interest = gois_list["apple"],
+                                kmeans_list = c(2)))
 
 ```
 

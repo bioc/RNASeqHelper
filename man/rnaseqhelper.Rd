@@ -54,6 +54,7 @@ analysis and perform a full analysis from a few starting
 parameters
 }
 \examples{
+options(bitmapType='cairo') ## disable plotting to X11
 n <- 1000
 tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
 tab <- tab - min(tab)

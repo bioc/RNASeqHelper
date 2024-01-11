@@ -52,6 +52,7 @@
 #'     default.
 #' @return None.
 #' @examples
+#' options(bitmapType='cairo') ## disable plotting to X11
 #' n <- 1000
 #' tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
 #' tab <- tab - min(tab)
@@ -65,7 +66,7 @@
 #' rnaseqhelper(tab, phenotype_data,
 #'     out_dir = tempdir(), "green", "red",
 #'     heat_params = list(
-#'         score_thresh = c(0.2, 0.5),
+#'         score_thresh = c(0.5),
 #'         kmeans_list = 2
 #'     )
 #' )
@@ -74,7 +75,6 @@ rnaseqhelper <- function(tab, phenotype_data, out_dir = tempdir(),
                         numer, denom,
                         keep_params = list(),
                         heat_params = list(), volcano_params = list()) {
-    ## out_dir="test/1_genes"
     keep_params_defaults <- as.list(formals(high_quality_genes))
     keep_params <- modifyList(keep_params_defaults, keep_params)
     keep_params$sam_mat <- tab
@@ -461,6 +461,7 @@ kmeans_heatmaps <- function(norms, trans, pheno,
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
+#' options(bitmapType='cairo') ## disable plotting to X11
 #' n <- 100
 #' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' pheno <- data.frame(sample=paste0("S", 1:n),
@@ -679,10 +680,11 @@ do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
         out_dir = file.path(out_dir, "gene_cluster_scale"))
     message("     - Plotting genes Scaled")
 
+    message("     - Plotting genes List")
     gene_plots_by_gene(long_norm, long_scale, genes_of_interest,
                     outprefix = "gene.lists",
                     out_dir = file.path(out_dir, "gene_lists"))
-    message("     - Plotting genes List")
+
 }
 
 #' @title Cluster Assignments
@@ -728,6 +730,7 @@ cluster_assignments <- function(hm_now_drawn, matobj) {
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
+#' options(bitmapType='cairo') ## disable plotting to X11
 #' n <- 100
 #' scale_mat <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' rownames(scale_mat) <- paste0("G", 1:n)
@@ -1175,8 +1178,10 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
             genes_found <- unique((norm_long %>%
                                     filter(.data[["gene"]] %in% glist))$gene)
             if (length(genes_found) < 1) {
-                message("no genes found for: ", glist_name)
+                message("       - ", glist_name, " (no genes found)")
                 return(NULL)
+            } else {
+                message("       - ", glist_name)
             }
             pgene_norm <- single_gene_plot(
                 norm_long, genes_found, glist_name,
