@@ -1,7 +1,7 @@
 Package: RNASeqHelper
 Type: Package
 Title: Generate Heatmaps and Volcano Plots for your DESeq2 Genes of Interest
-Version: 0.99.4
+Version: 0.99.5
 Authors@R:
     c(person(given="Mehmet", family="Tekman",
         email = "mtekman89@gmail.com",
@@ -31,9 +31,9 @@ Imports:
     purrr (>= 1.0.2), tidyr (>= 1.3.0), grDevices, graphics,
     grid, stats, utils
 Suggests:
-    BiocStyle, knitr, rmarkdown, testthat (>= 3.0.0), svglite
+    BiocStyle, knitr, rmarkdown, testthat (>= 3.0.0)
 Depends:
-    SummarizedExperiment (>= 1.30.2)
+    SummarizedExperiment (>= 1.30.2), svglite (>= 2.1.3)
 URL: https://gitlab.com/mtekman/rnaseqhelper
 BugReports: https://gitlab.com/mtekman/rnaseqhelper/issues
 Config/testthat/edition: 3

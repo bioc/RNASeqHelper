@@ -22,6 +22,7 @@
 #' @importFrom DESeq2 DESeqDataSetFromMatrix DESeq plotPCA vst results
 #'     counts
 #' @importFrom SummarizedExperiment assay colData
+#' @importFrom svglite svglite
 
 # MAIN #
 
