@@ -1,7 +1,7 @@
 Package: RNASeqHelper
 Type: Package
 Title: Generate Heatmaps and Volcano Plots for your DESeq2 Genes of Interest
-Version: 0.99.5
+Version: 0.99.6
 Authors@R:
     c(person(given="Mehmet", family="Tekman",
         email = "mtekman89@gmail.com",
