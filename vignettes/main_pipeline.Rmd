@@ -117,25 +117,25 @@ samples with a minumum expression of 2.
 
 ```{r}
 keep_genes <- high_quality_genes(mat, min_occur=3, min_detect=2,
-                                out_dir="~/myanalysis/0_genes")
+                                out_dir=file.path(tempdir(), "0_genes"))
 ```
 
 We are told that no genes were dropped.
 
 We can inspect this ourselves by examining the output file
-"~/myanalysis/0_genes/smallestGroup3-detected2-keep_genes".
+"0_genes/smallestGroup3-detected2-keep_genes".
 
 Usually we expect a few genes to be dropped, so let's increase the
 parameters:
 
 ```{r}
 keep_genes <- high_quality_genes(mat, min_occur=8, min_detect=20,
-                                out_dir="~/myanalysis/0_genes")
+                                out_dir=file.path(tempdir(), "0_genes"))
 ```
 
 Here we see 87 genes are dropped, leaving us with 92% of the data
 still, and we can once again inspect this directly by looking at the
-"~/myanalysis/0_genes/smallestGroup9-detected10-keep_genes" file
+"0_genes/smallestGroup9-detected10-keep_genes" file
 
 
 #### Validating for Informative Genes
@@ -148,7 +148,7 @@ samples, and is an implicit declaration.
 
 ```{r}
 res <- run_deseq(mat, keep_genes, phenotype_data,
-        out_dir = "~/myanalysis/1_matrices_and_deseq")
+        out_dir = file.path(tempdir(), "1_matrices_and_deseq"))
 ```
 
 Here tables and plots were written to the "1_matrices_and_deseq" folder:
@@ -193,7 +193,7 @@ pairwise_hmap_volcano(res$ddsObj,
                     score_thresh = c(0.5, 0.9),
                     genes_of_interest = gois_list,
                     kmeans_list = c(2,5),
-                    out_dirprefix="~/myanalysis/2_heatmaps")
+                    out_dirprefix=file.path(tempdir(), "2_heatmaps"))
 
 ```
 
@@ -212,7 +212,7 @@ analysis.
 
 
 ```{r}
-rnaseqhelper(mat, phenotype_data, out_dir="~/myanalysis2",
+rnaseqhelper(mat, phenotype_data, out_dir=file.path(tempdir(), "second_analysis"),
             numer = "green", denom = "blue",
             keep_params = list(min_occur=8, min_detect=20),
             heat_params = list(top_ngenes_tocluster = 1000,
