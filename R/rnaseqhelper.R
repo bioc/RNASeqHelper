@@ -1120,30 +1120,44 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
     lab_fun <- function(s) {
         (dat_labs %>% filter(.data[["cluster"]] == s))$ftext
     }
+    if ("time" %in% colnames(tabn)) {
+        p1 <- tabn %>% ggplot(aes_string(
+            x = "time", y = "value", fill = "condition",
+            colour = "condition", group = "condition"
+            )) +
+            geom_line(data=tabn,  ## Individual gene lines to trace the background
+                      aes_string(x = "time", y = "value", group="gene"),
+                      colour = "grey", alpha = 0.1) +
+            stat_summary(
+                fun.data = "mean_sdl", geom = "ribbon",
+                alpha = 0.1, colour = NA
+            ) +
+            stat_summary(fun = mean, geom = "line") +
+            scale_x_continuous(breaks = time_breaks)
+    } else { ## condition plots
+        p1 <- tabn %>% ggplot(aes_string(
+            x = "condition", y = "value", fill = "condition", group = "condition"
+        )) +
+            geom_violin(colour = "black") + ## individual gene dots
+            geom_jitter(aes_string(group = "gene"), size=0.5, alpha=0.15)
+    }
 
-    p1 <- tabn %>% ggplot(aes_string(
-                        x = "time", y = "value", fill = "condition",
-                        colour = "condition", group = "condition")) +
-        stat_summary(fun.data = "mean_sdl", geom = "ribbon",
-                    alpha = 0.1, colour = NA) +
-        stat_summary(fun = mean, geom = "line") +
-        facet_wrap("cluster", labeller = labeller(cluster = lab_fun),
-                    drop = FALSE) +
+    p2 <- p1 + facet_wrap("cluster",
+                          labeller = labeller(cluster = lab_fun),
+                          drop = FALSE) +
         ylab("Scaled Expression") +
         ggtitle("Gene Trends by cluster",
                 subtitle = paste0(
                     "Genes (", length(unique(tabn$gene)),
                     ") with cluster affinity scores >= ",
-                    score_thresh
-                )) +
-        scale_x_continuous(breaks = time_breaks) +
+                    score_thresh)) +
         theme_bw()
 
     newoutprefix <- file.path(out_dir,
                                 paste0("gene_plots-k",
                                     num_clusters(tab),
                                     "-score", score_thresh))
-    ggsave(plot = p1, filename = paste0(newoutprefix, ".svg"),
+    ggsave(plot = p2, filename = paste0(newoutprefix, ".svg"),
             dpi = 800, width = 10, height = 10, units = "in")
     tabn %>% write_tsv(paste0(newoutprefix, ".tsv"))
     return(p1)
@@ -1220,19 +1234,31 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
                             ylab_text, title_text,
                             out_dir, outprefix, filesuffix, scaley10) {
     time_breaks <- sort(unique(sort(long_data$time)))
-
-    pgene <- long_data %>%
-        filter(.data[["gene"]] %in% genes_found) %>%
-        ggplot(aes_string(
-            x = "time", y = "value", fill = "condition",
-            colour = "condition", group = "condition"
-        )) +
-        stat_summary(
-            fun.data = "mean_sdl", geom = "ribbon",
-            alpha = 0.1, colour = NA
-        ) +
-        stat_summary(fun = mean, geom = "line") +
-        geom_jitter(width = 0.1) +
+    if ("time" %in% colnames(long_data)) {
+        p1 <- long_data %>%
+            filter(.data[["gene"]] %in% genes_found) %>%
+            ggplot(aes_string(
+                x = "time", y = "value", fill = "condition",
+                colour = "condition", group = "condition"
+            )) +
+            geom_line(data=long_data,  ## Individual gene lines to trace the background
+                      aes_string(x = "time", y = "value", group = "gene"),
+                      colour = "grey", alpha=0.15) +
+            stat_summary(
+                fun.data = "mean_sdl", geom = "ribbon",
+                alpha = 0.1, colour = NA
+            ) +
+            stat_summary(fun = mean, geom = "line")
+    } else { ## Condition plot only
+        p1 <- long_data %>%
+            filter(.data[["gene"]] %in% genes_found) %>%
+            ggplot(aes_string(
+                x = "condition", y = "value", fill = "condition",
+                colour = "condition", group = "condition"
+            )) +
+            geom_jitter(aes_string(group = "gene"), size=0.5, alpha=0.15)
+    }
+    pgene <- p1 + geom_jitter(width = 0.1) +
         facet_wrap("gene", scales = "free_y") +
         ylab(ylab_text) +
         ggtitle(title_text) +
