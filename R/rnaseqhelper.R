@@ -56,11 +56,12 @@
 #'     default.
 #' @return None.
 #' @examples
-#' options(bitmapType='cairo') ## disable plotting to X11
+#' options(bitmapType = "cairo") ## disable plotting to X11
 #' ngenes <- 1000
 #' nsamples <- 10
-#' tab <- matrix(as.integer(rnorm(ngenes*nsamples, 1000, 500)),
-#'                 ncol = nsamples)
+#' tab <- matrix(as.integer(rnorm(ngenes * nsamples, 1000, 500)),
+#'     ncol = nsamples
+#' )
 #' tab <- tab - min(tab)
 #' rownames(tab) <- paste0("G", 1:ngenes)
 #' colnames(tab) <- paste0("S", 1:nsamples)
@@ -117,17 +118,18 @@ rnaseqhelper <- function(tab, phenotype_data, out_dir = tempdir(),
 #'     tables and plots.
 #' @return list of tables
 #' @examples
-#' n <- 1000
-#' tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
+#' ngene <- 1000
+#' nsample <- 10
+#' tab <- matrix(as.integer(rnorm(ngene * nsample, 1000, 500)), ncol = nsample)
 #' tab <- tab - min(tab)
-#' rownames(tab) <- paste0("G", 1:n)
-#' colnames(tab) <- paste0("S", 1:n)
+#' rownames(tab) <- paste0("G", seq_along(ngene))
+#' colnames(tab) <- paste0("S", seq_along(nsample))
 #' phenotype_data <- data.frame(
-#'     sample = paste0("S", 1:n),
-#'     condition = c(rep("red", n / 2), rep("green", n / 2)),
+#'     sample = colnames(tab),
+#'     condition = c(rep("red", nsample / 2), rep("green", nsample / 2)),
 #'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
 #' )
-#' keep_genes <- paste0("G", 1:n)
+#' keep_genes <- rownames(tab)
 #' res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
 #' @export
 run_deseq <- function(tab, keep_genes, phenotype_data, out_dir) {
@@ -269,6 +271,21 @@ top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
 #' @param out_dirprefix A character prefix outlining the directory and
 #'     basename in which plots and tables will be deployed.
 #' @return Void. Plots are deposited to the output directory.
+#' @examples
+#' ngene <- 1000
+#' nsample <- 10
+#' tab <- matrix(as.integer(rnorm(ngene * nsample, 1000, 500)), ncol = nsample)
+#' tab <- tab - min(tab)
+#' rownames(tab) <- paste0("G", seq_along(ngene))
+#' colnames(tab) <- paste0("S", seq_along(nsample))
+#' phenotype_data <- data.frame(
+#'     sample = colnames(tab),
+#'     condition = c(rep("red", nsample / 2), rep("green", nsample / 2)),
+#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+#' )
+#' keep_genes <- rownames(tab)
+#' res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
+#' pairwise_hmap_volcano(res$ddsObj, assay(res$vFalse), "red", "green")
 #' @export
 pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
                                     numer, denom,
@@ -1122,8 +1139,7 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
     tabn$cluster <- factor(tabn$cluster, levels = unique(sort(tab$cluster)))
     dat_labs <- generate_labelling_table(tabn)
     time_breaks <- sort(unique(sort(tab$time)))
-    ## labelling function for facet
-    lab_fun <- function(s) {
+    lab_fun <- function(s) {                    ## labelling function for facet
         (dat_labs %>% filter(.data[["cluster"]] == s))$ftext
     }
     if ("time" %in% colnames(tabn)) {
@@ -1152,21 +1168,15 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
             geom_jitter(aes_string(group = "gene"), size=0.5, alpha=0.15)
     }
 
-    p2 <- p1 + facet_wrap("cluster",
-                          labeller = labeller(cluster = lab_fun),
-                          drop = FALSE) +
-        ylab("Scaled Expression") +
-        ggtitle("Gene Trends by cluster",
-                subtitle = paste0(
-                    "Genes (", length(unique(tabn$gene)),
-                    ") with cluster affinity scores >= ",
-                    score_thresh)) +
+    p2 <- p1 + facet_wrap("cluster", labeller = labeller(cluster = lab_fun),
+                        drop = FALSE) +
+        ylab("Scaled Expression") + ggtitle("Gene Trends by cluster",
+                subtitle = paste0("Genes (", length(unique(tabn$gene)),
+                    ") with cluster affinity scores >= ", score_thresh)) +
         theme_bw()
 
-    newoutprefix <- file.path(out_dir,
-                                paste0("gene_plots-k",
-                                    num_clusters(tab),
-                                    "-score", score_thresh))
+    newoutprefix <- file.path(out_dir, paste0("gene_plots-k",
+                                    num_clusters(tab), "-score", score_thresh))
     ggsave(plot = p2, filename = paste0(newoutprefix, ".svg"),
             dpi = 800, width = 10, height = 10, units = "in")
     tabn %>% write_tsv(paste0(newoutprefix, ".tsv"))
@@ -1262,8 +1272,7 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
             stat_summary(
                 fun.data = "mean_sdl", geom = "ribbon",
                 alpha = 0.1, colour = NA
-            ) +
-            stat_summary(fun = mean, geom = "line")
+            ) + stat_summary(fun = mean, geom = "line")
     } else { ## Condition plot only
         message("Condition Violin [", ylab_text, "]")
         p1 <- long_data %>%
@@ -1276,25 +1285,19 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
     }
     pgene <- p1 + geom_jitter(width = 0.1) +
         facet_wrap("gene", scales = "free_y") +
-        ylab(ylab_text) +
-        ggtitle(title_text) +
-        scale_x_continuous(breaks = time_breaks) +
-        theme_bw()
+        ylab(ylab_text) + ggtitle(title_text) +
+        scale_x_continuous(breaks = time_breaks) + theme_bw()
 
-    if (scaley10) {
-        pgene <- pgene + scale_y_log10()
-    }
+    if (scaley10) { pgene <- pgene + scale_y_log10() }
     plot_dims <- function(n) { ## Calculates plot dims for a given N plots
-        w <- ceiling(sqrt(n))
-        return(list(w = w, h = ceiling(n / w)))
+        w <- ceiling(sqrt(n)); return(list(w = w, h = ceiling(n / w)))
     }
     pdims <- plot_dims(length(genes_found))
     ggsave(
         plot = pgene,
         filename = file.path(
             out_dir, paste0(outprefix, ".", glist_name, filesuffix)
-        ),
-        dpi = 800, width = pdims$w * 2, height = pdims$h * 1.5,
+        ), dpi = 800, width = pdims$w * 2, height = pdims$h * 1.5,
         units = "in"
     )
     return(pgene)

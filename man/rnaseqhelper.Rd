@@ -54,11 +54,12 @@ analysis and perform a full analysis from a few starting
 parameters
 }
 \examples{
-options(bitmapType='cairo') ## disable plotting to X11
+options(bitmapType = "cairo") ## disable plotting to X11
 ngenes <- 1000
 nsamples <- 10
-tab <- matrix(as.integer(rnorm(ngenes*nsamples, 1000, 500)),
-                ncol = nsamples)
+tab <- matrix(as.integer(rnorm(ngenes * nsamples, 1000, 500)),
+    ncol = nsamples
+)
 tab <- tab - min(tab)
 rownames(tab) <- paste0("G", 1:ngenes)
 colnames(tab) <- paste0("S", 1:nsamples)

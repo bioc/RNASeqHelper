@@ -28,16 +28,17 @@ Runs DESeq with filtering thresholds and shows PCA for
 variance-stabilize-transformed data.
 }
 \examples{
-n <- 1000
-tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
+ngene <- 1000
+nsample <- 10
+tab <- matrix(as.integer(rnorm(ngene * nsample, 1000, 500)), ncol = nsample)
 tab <- tab - min(tab)
-rownames(tab) <- paste0("G", 1:n)
-colnames(tab) <- paste0("S", 1:n)
+rownames(tab) <- paste0("G", seq_along(ngene))
+colnames(tab) <- paste0("S", seq_along(nsample))
 phenotype_data <- data.frame(
-    sample = paste0("S", 1:n),
-    condition = c(rep("red", n / 2), rep("green", n / 2)),
+    sample = colnames(tab),
+    condition = c(rep("red", nsample / 2), rep("green", nsample / 2)),
     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
 )
-keep_genes <- paste0("G", 1:n)
+keep_genes <- rownames(tab)
 res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
 }

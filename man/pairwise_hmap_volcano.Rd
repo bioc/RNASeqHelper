@@ -68,3 +68,19 @@ plots of the DE genes, and generate a global heatmap with those
 DE genes and a pairwise one with just the numerator and
 denominator samples.
 }
+\examples{
+ngene <- 1000
+nsample <- 10
+tab <- matrix(as.integer(rnorm(ngene * nsample, 1000, 500)), ncol = nsample)
+tab <- tab - min(tab)
+rownames(tab) <- paste0("G", seq_along(ngene))
+colnames(tab) <- paste0("S", seq_along(nsample))
+phenotype_data <- data.frame(
+    sample = colnames(tab),
+    condition = c(rep("red", nsample / 2), rep("green", nsample / 2)),
+    time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+)
+keep_genes <- rownames(tab)
+res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
+pairwise_hmap_volcano(res$ddsObj, assay(res$vFalse), "red", "green")
+}

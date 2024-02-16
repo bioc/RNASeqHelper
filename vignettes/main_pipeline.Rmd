@@ -1,20 +1,28 @@
 ---
-<!--
-  %% \VignetteEngine{knitr::knitr}
-  -->
 title: "Easily run a RNA-Seq analysis via RNASeqHelper"
 shortitle: "RNASeqHelper Vignette"
 date: "`r Sys.Date()`"
 author:
 - name: "Mehmet Tekman"
-  affiliation: Institute of Experimental and Clinical Pharmacology and Toxicology, University Freiburg
+  affiliation:
+  - Institute of Experimental and Clinical Pharmacology and Toxicology,
+    University Freiburg
   email: mtekman89@gmail.com
 - name: "Sebastian Arnold"
-  affiliation: Institute of Experimental and Clinical Pharmacology and Toxicology, University Freiburg
+  affiliation:
+  - Institute of Experimental and Clinical Pharmacology and Toxicology,
+    University Freiburg
   email: sebastian.arnold@pharmakol.uni-freiburg.de
 package: RNASeqHelper
 abstract: >
-    Our work introduces an R package for interactive RNA-Seq analysis, enhancing DESeq2's robust statistical methods. It simplifies complex analyses, offering user-friendly features like heatmap and volcano plot generation. This package serves as both an interactive tool and an automated pipeline, enabling efficient exploration of RNA-Seq data without extensive programming knowledge. Its intuitive visualization and seamless integration with DESeq2 facilitate gene expression studies, fostering discoveries.
+    Our work introduces an R package for interactive RNA-Seq analysis,
+    enhancing DESeq2's robust statistical methods. It simplifies complex
+    analyses, offering user-friendly features like heatmap and volcano plot
+    generation. This package serves as both an interactive tool and an
+    automated pipeline, enabling efficient exploration of RNA-Seq data without
+    extensive programming knowledge. Its intuitive visualization and seamless
+    integration with DESeq2 facilitate gene expression studies,
+    fostering discoveries.
 output: 
   BiocStyle::pdf_document
 vignette: >
