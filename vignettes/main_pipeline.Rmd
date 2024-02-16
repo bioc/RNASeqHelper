@@ -1,19 +1,30 @@
 ---
-title: "RNASeqHelper reference manual"
+<!--
+  %% \VignetteEngine{knitr::knitr}
+  -->
+title: "Easily run a RNA-Seq analysis via RNASeqHelper"
+shortitle: "RNASeqHelper Vignette"
 date: "`r Sys.Date()`"
-author: "Mehmet Tekman"
-output:
-    html_document:
-        toc: true
-        toc_depth: 4
+author:
+- name: "Mehmet Tekman"
+  affiliation: Institute of Experimental and Clinical Pharmacology and Toxicology, University Freiburg
+  email: mtekman89@gmail.com
+- name: "Sebastian Arnold"
+  affiliation: Institute of Experimental and Clinical Pharmacology and Toxicology, University Freiburg
+  email: sebastian.arnold@pharmakol.uni-freiburg.de
+package: RNASeqHelper
+abstract: >
+    Our work introduces an R package for interactive RNA-Seq analysis, enhancing DESeq2's robust statistical methods. It simplifies complex analyses, offering user-friendly features like heatmap and volcano plot generation. This package serves as both an interactive tool and an automated pipeline, enabling efficient exploration of RNA-Seq data without extensive programming knowledge. Its intuitive visualization and seamless integration with DESeq2 facilitate gene expression studies, fostering discoveries.
+output: 
+  BiocStyle::pdf_document
 vignette: >
-    %\VignetteIndexEntry{Example CustomGenome analysis}
+    %\VignetteIndexEntry{Easily run a RNA-Seq analysis via RNASeqHelper}
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
 ---
 \tableofcontents
-```{r echo=FALSE}
-knitr::opts_chunk$set(fig.width=8, fig.height=8, dpi=50, dev='jpeg')
+```{r style, echo = FALSE, results = 'asis'}
+BiocStyle::markdown()
 ```
 
 # RNASeqHelper
@@ -61,6 +72,10 @@ phenotype_data = data.frame(sample = colnames(mat),
             condition = c(rep("green", 3),rep("red", 3), rep("blue", 3)),
             time = c(5, 5, 15, 10, 10, 15, 5, 10, 15))
 
+message("First 6 lines of the matrix")
+head(mat)
+message("Phenotype Data")
+phenotype_data
 ```
 
 So now we have a matrix of 9 samples and 10000 genes, and accompanying
