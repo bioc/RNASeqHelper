@@ -1,10 +1,11 @@
 #' @importFrom dplyr arrange case_when filter group_by left_join
 #'     mutate desc n_distinct select summarise %>% .data
+#' @import Hmisc
 #' @importFrom ggplot2 ggplot facet_wrap stat_summary ylab xlab theme
 #'     theme_bw scale_x_continuous ggtitle ggsave aes_string
-#'     geom_point waiver scale_y_continuous scale_y_log10
+#'     geom_point waiver scale_y_continuous scale_y_log10 mean_sdl
 #'     scale_colour_manual element_blank scale_shape_manual
-#'     geom_function labeller geom_jitter
+#'     geom_function labeller geom_jitter geom_violin geom_line
 #' @importFrom ggrepel geom_label_repel
 #' @importFrom graphics plot.new
 #' @importFrom grid grid.grabExpr gpar unit
@@ -23,6 +24,8 @@
 #'     counts
 #' @importFrom SummarizedExperiment assay colData
 #' @importFrom svglite svglite
+
+# Note: Hmisc is required for ggplot's mean_sdl to work correctly.
 
 # MAIN #
 
