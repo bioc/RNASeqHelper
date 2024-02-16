@@ -17,11 +17,13 @@ single_gene_plot(
 )
 }
 \arguments{
-\item{long_data}{A tibble containing columns: gene, time, condition, value}
+\item{long_data}{A tibble containing columns: gene, condition,
+value, and optionally time}
 
 \item{genes_found}{A vector of gene names}
 
-\item{glist_name}{A string for the group name for said vector of genes}
+\item{glist_name}{A string for the group name for said vector of
+genes}
 
 \item{ylab_text}{A string for Y-axis label text}
 
@@ -32,7 +34,8 @@ plots. Default is is "gene_lists".}
 
 \item{outprefix}{A string for the filename prefix}
 
-\item{filesuffix}{A string depicting the filename suffix and extension.}
+\item{filesuffix}{A string depicting the filename suffix and
+extension.}
 
 \item{scaley10}{A boolean on whether to scale the Y-axis by log10}
 }

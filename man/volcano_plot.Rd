@@ -39,9 +39,9 @@ analysis with added curves for graphic effect.
 \examples{
 n <- 100
 dsqres <- data.frame(gene = paste0("G", 1:n),
-                    data = rnorm(n, 5, 2),
-                    log2FoldChange = 1e-5,
-                    padj = 1 / rnorm(n, 5, 2))
+                    data = rnorm(n, 5, 2) + 0.1,
+                    log2FoldChange = rnorm(n, 0, 2) + 0.1,
+                    padj = 0.1 + 1 / rnorm(n, 5, 2))
 degenes <- paste0("G", (n-50):(n-20))
 res <- volcano_plot(dsqres, degenes, "my plot")
 }

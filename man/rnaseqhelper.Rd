@@ -55,20 +55,22 @@ parameters
 }
 \examples{
 options(bitmapType='cairo') ## disable plotting to X11
-n <- 1000
-tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
+ngenes <- 1000
+nsamples <- 10
+tab <- matrix(as.integer(rnorm(ngenes*nsamples, 1000, 500)),
+                ncol = nsamples)
 tab <- tab - min(tab)
-rownames(tab) <- paste0("G", 1:n)
-colnames(tab) <- paste0("S", 1:n)
+rownames(tab) <- paste0("G", 1:ngenes)
+colnames(tab) <- paste0("S", 1:nsamples)
 phenotype_data <- data.frame(
-    sample = paste0("S", 1:n),
-    condition = c(rep("red", n / 2), rep("green", n / 2)),
-    time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+    sample = paste0("S", 1:nsamples),
+    condition = c(rep("red", nsamples / 2), rep("green", nsamples / 2)),
+    time = as.integer(rnorm(nsamples, 2, 0.5) + 1) * 5
 )
 rnaseqhelper(tab, phenotype_data,
     out_dir = tempdir(), "green", "red",
     heat_params = list(
-        score_thresh = c(0.2, 0.5),
+        score_thresh = c(0.5),
         kmeans_list = 2
     )
 )

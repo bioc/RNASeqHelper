@@ -54,15 +54,17 @@
 #' @return None.
 #' @examples
 #' options(bitmapType='cairo') ## disable plotting to X11
-#' n <- 1000
-#' tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
+#' ngenes <- 1000
+#' nsamples <- 10
+#' tab <- matrix(as.integer(rnorm(ngenes*nsamples, 1000, 500)),
+#'                 ncol = nsamples)
 #' tab <- tab - min(tab)
-#' rownames(tab) <- paste0("G", 1:n)
-#' colnames(tab) <- paste0("S", 1:n)
+#' rownames(tab) <- paste0("G", 1:ngenes)
+#' colnames(tab) <- paste0("S", 1:nsamples)
 #' phenotype_data <- data.frame(
-#'     sample = paste0("S", 1:n),
-#'     condition = c(rep("red", n / 2), rep("green", n / 2)),
-#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+#'     sample = paste0("S", 1:nsamples),
+#'     condition = c(rep("red", nsamples / 2), rep("green", nsamples / 2)),
+#'     time = as.integer(rnorm(nsamples, 2, 0.5) + 1) * 5
 #' )
 #' rnaseqhelper(tab, phenotype_data,
 #'     out_dir = tempdir(), "green", "red",
@@ -150,8 +152,8 @@ run_deseq <- function(tab, keep_genes, phenotype_data, out_dir) {
         bFalse = p1, bTrue = p2,
         vFalse = vsd1, vTrue = vsd2,
         ddsObj = ddsObj, sub = sub_as
-    )    
-    pca_and_matrices(res, out_dir)    
+    )
+    pca_and_matrices(res, out_dir)
     return(res)
 }
 
@@ -628,25 +630,26 @@ calculate_cluster_corr <- function(clust_assign, scale_mat,
 #'     plots and tables.
 #' @return None.
 #' @examples
-#' n <- 100
-#' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
-#' rownames(norm_counts) <- paste0("G", 1:n)
-#' colnames(norm_counts) <- paste0("S", 1:n)
-#' scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
-#' rownames(scale_mat) <- paste0("G", 1:n)
-#' colnames(scale_mat) <- paste0("S", 1:n)
+#' ngenes <- 100
+#' nsamples <- 6
+#' norm_counts <- matrix(rnorm(ngenes * nsamples, mean = 5), nrow = ngenes)
+#' rownames(norm_counts) <- paste0("G", 1:ngenes)
+#' colnames(norm_counts) <- paste0("S", 1:nsamples)
+#' scale_mat <- matrix(rnorm(ngenes * nsamples, mean = 0), nrow = ngenes)
+#' rownames(scale_mat) <- rownames(norm_counts)
+#' colnames(scale_mat) <- colnames(norm_counts)
 #' pheno <- data.frame(
-#'     sample = paste0("S", 1:n),
-#'     condition = c(rep("red", n / 2), rep("green", n / 2)),
-#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+#'     sample = colnames(scale_mat),
+#'     condition = c(rep("red", nsamples / 2), rep("green", nsamples / 2)),
+#'     time = as.integer(rnorm(nsamples, 2, 0.5) + 1) * 5
 #' )
 #' gene_cluster_scores <- data.frame(
 #'     gene = rownames(scale_mat),
-#'     cluster = c(rep(1, n / 50), rep(2, n / 50)),
-#'     score = rnorm(n, 0.5, 0.25)
+#'     cluster = c(rep(1, ngenes / 50), rep(2, ngenes / 50)),
+#'     score = rnorm(ngenes, 0.5, 0.25)
 #' )
 #' score_thresh <- c(0.2, 0.3)
-#' genes_of_interest <- paste0("G", 5:50)
+#' genes_of_interest <- paste0("G", 5:15)
 #' res <- do_gene_plots(norm_counts, scale_mat, pheno,
 #'                      gene_cluster_scores, score_thresh,
 #'                      genes_of_interest,
@@ -989,9 +992,9 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
 #' @examples
 #' n <- 100
 #' dsqres <- data.frame(gene = paste0("G", 1:n),
-#'                      data = rnorm(n, 5, 2),
-#'                      log2FoldChange = 1e-5,
-#'                      padj = 1 / rnorm(n, 5, 2))
+#'                      data = rnorm(n, 5, 2) + 0.1,
+#'                      log2FoldChange = rnorm(n, 0, 2) + 0.1,
+#'                      padj = 0.1 + 1 / rnorm(n, 5, 2))
 #' degenes <- paste0("G", (n-50):(n-20))
 #' res <- volcano_plot(dsqres, degenes, "my plot")
 #' @export
@@ -1102,8 +1105,8 @@ gene_clusters_by_score <- function(tab,
 #'     split by cluster.
 #' @param tab A dataframe with long plotting data containing at least
 #'     the columns \code{cluster}, \code{condition}, \code{value},
-#'     \code{time}, and \code{score}. It can take normalised or scaled
-#'     values as input.
+#'     \code{score}, and optionally \code{time}. It can take
+#'     normalised or scaled values as input.
 #' @param score_thresh numeric threshold to filter out genes with
 #'     correlation scores not matching these values
 #' @param out_dir a string depicting the directory of where the plots
@@ -1121,13 +1124,15 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
         (dat_labs %>% filter(.data[["cluster"]] == s))$ftext
     }
     if ("time" %in% colnames(tabn)) {
+        message("Condition/Time Ribbon Plot for score_thresh=", score_thresh)
         p1 <- tabn %>% ggplot(aes_string(
             x = "time", y = "value", fill = "condition",
             colour = "condition", group = "condition"
             )) +
-            geom_line(data=tabn,  ## Individual gene lines to trace the background
-                      aes_string(x = "time", y = "value", group="gene"),
-                      colour = "grey", alpha = 0.1) +
+            ## Individual gene lines to trace the background. TAKES TOO LONG.
+            ##geom_line(data=tabn,
+            ##          aes_string(x = "time", y = "value", group="gene"),
+            ##          colour = "grey", alpha = 0.1) +
             stat_summary(
                 fun.data = "mean_sdl", geom = "ribbon",
                 alpha = 0.1, colour = NA
@@ -1135,8 +1140,10 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
             stat_summary(fun = mean, geom = "line") +
             scale_x_continuous(breaks = time_breaks)
     } else { ## condition plots
+        message("Condition Violin plot for score_thresh=", score_thresh)
         p1 <- tabn %>% ggplot(aes_string(
-            x = "condition", y = "value", fill = "condition", group = "condition"
+                        x = "condition", y = "value", fill = "condition",
+                        group = "condition"
         )) +
             geom_violin(colour = "black") + ## individual gene dots
             geom_jitter(aes_string(group = "gene"), size=0.5, alpha=0.15)
@@ -1219,15 +1226,18 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
 #' @title Single Gene Plot
 #' @description Perform a plot of all genes for a single instance of
 #'     long table data and save to file, as well as return the plot.
-#' @param long_data A tibble containing columns: gene, time, condition, value
+#' @param long_data A tibble containing columns: gene, condition,
+#'     value, and optionally time
 #' @param genes_found A vector of gene names
-#' @param glist_name A string for the group name for said vector of genes
+#' @param glist_name A string for the group name for said vector of
+#'     genes
 #' @param ylab_text A string for Y-axis label text
 #' @param title_text A string for the title text
 #' @param out_dir A string denoting the output directory to store
 #'     plots. Default is is "gene_lists".
 #' @param outprefix A string for the filename prefix
-#' @param filesuffix A string depicting the filename suffix and extension.
+#' @param filesuffix A string depicting the filename suffix and
+#'     extension.
 #' @param scaley10 A boolean on whether to scale the Y-axis by log10
 #' @return A ggplot2 object
 single_gene_plot <- function(long_data, genes_found, glist_name,
@@ -1235,21 +1245,24 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
                             out_dir, outprefix, filesuffix, scaley10) {
     time_breaks <- sort(unique(sort(long_data$time)))
     if ("time" %in% colnames(long_data)) {
+        message("Condition/Time Ribbon [", ylab_text, "]")
         p1 <- long_data %>%
             filter(.data[["gene"]] %in% genes_found) %>%
             ggplot(aes_string(
                 x = "time", y = "value", fill = "condition",
                 colour = "condition", group = "condition"
             )) +
-            geom_line(data=long_data,  ## Individual gene lines to trace the background
-                      aes_string(x = "time", y = "value", group = "gene"),
-                      colour = "grey", alpha=0.15) +
+            ## Individual gene lines to trace the background, TAKES TOO LONG.
+            ## geom_line(data=long_data,
+            ##           aes_string(x = "time", y = "value", group = "gene"),
+            ##           colour = "grey", alpha=0.15) +
             stat_summary(
                 fun.data = "mean_sdl", geom = "ribbon",
                 alpha = 0.1, colour = NA
             ) +
             stat_summary(fun = mean, geom = "line")
     } else { ## Condition plot only
+        message("Condition Violin [", ylab_text, "]")
         p1 <- long_data %>%
             filter(.data[["gene"]] %in% genes_found) %>%
             ggplot(aes_string(

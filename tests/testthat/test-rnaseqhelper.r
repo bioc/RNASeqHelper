@@ -1,35 +1,46 @@
 
-test_that("rnaseqhelper", {
-    n <- 1000
-    tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
+make_mat_and_phenotype <- function(ngenes=1000, nsamples=10,
+                                   mean=1000, var=500) {
+    tab <- matrix(as.integer(rnorm(ngenes*nsamples, mean, var)),
+                  ncol = nsamples)
     tab <- tab - min(tab)
-    rownames(tab) <- paste0("G", 1:n)
-    colnames(tab) <- paste0("S", 1:n)
+    rownames(tab) <- paste0("G", 1:ngenes)
+    colnames(tab) <- paste0("S", 1:nsamples)
     phenotype_data <- data.frame(
-        sample = paste0("S", 1:n),
-        condition = c(rep("red", n / 2), rep("green", n / 2)),
-        time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+        sample = paste0("S", 1:nsamples),
+        condition = c(rep("red", nsamples / 2),
+                      rep("green", nsamples / 2)),
+        time = as.integer(rnorm(nsamples, 2, 0.5) + 1) * 5
     )
+    return(list(mat = tab, pheno = phenotype_data))
+}
+
+test_that("rnaseqhelper", {
+    tmp <- make_mat_and_phenotype(ngenes = 1000, nsamples = 10)
+    tab <- tmp$mat
+    phenotype_data <- tmp$pheno
+
     rnaseqhelper(tab, phenotype_data,
                 out_dir = tempdir(), "green", "red",
                 heat_params = list(
                     score_thresh = c(0.2, 0.5),
-                    kmeans_list = 2
-                ))
+                    kmeans_list = 2))
 })
 
 test_that("run_deseq", {
-    n <- 1000
-    tab <- matrix(as.integer(rnorm(n**2, 1000, 500)), ncol = n)
-    tab <- tab - min(tab)
-    rownames(tab) <- paste0("G", 1:n)
-    colnames(tab) <- paste0("S", 1:n)
-    phenotype_data <- data.frame(
-        sample = paste0("S", 1:n),
-        condition = c(rep("red", n / 2), rep("green", n / 2)),
-        time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
-    )
-    keep_genes <- paste0("G", 1:n)
+    tmp <- make_mat_and_phenotype(ngenes = 2000, nsamples = 10)
+    tab <- tmp$mat
+    phenotype_data <- tmp$pheno
+    keep_genes <- paste0("G", 1:1000)
+    res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
+})
+
+test_that("run_deseq_notime", {
+    tmp <- make_mat_and_phenotype(ngenes = 2000, nsamples = 10)
+    tab <- tmp$mat
+    phenotype_data <- tmp$pheno
+    phenotype_data$time <- NULL ## Blank out time component
+    keep_genes <- paste0("G", 1:1000)
     res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
 })
 
@@ -39,55 +50,43 @@ test_that("top_n_genes", {
 })
 
 test_that("heatmap_with_geneplots", {
-    n <- 100
-    norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
-    pheno <- data.frame(
-        sample = paste0("S", 1:n),
-        condition = c(rep("red", n / 2), rep("green", n / 2)),
-        time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
-    )
-    rownames(norm_counts) <- paste0("G", 1:n)
-    colnames(norm_counts) <- paste0("S", 1:n)
+    tmp <- make_mat_and_phenotype(ngenes = 100, nsamples = 10, mean=5, var=1)
+    norm_counts <- apply(tmp$mat, 1:2, as.numeric) * 1.5 ## convert to decimal
+    phenotype_data <- tmp$pheno
     genes <- list(
         highlight = paste0("G", 1:10),
         interest = paste0("G", c(2, 3)),
         score_thresh = c(0.2, 0.3)
     )
-    res <- heatmap_with_geneplots(norm_counts, pheno, 2,
-                                genes,
-                                out_dir = tempdir())
+    res <- heatmap_with_geneplots(norm_counts, phenotype_data, 2,
+                                genes, out_dir = tempdir())
 })
 
 test_that("calculate_cluster_corr", {
-    n <- 100
-    scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
-    rownames(scale_mat) <- paste0("G", 1:n)
-    colnames(scale_mat) <- paste0("S", 1:n)
+    ngenes <- 100
+    nsamples <- 10
+    scale_mat <- matrix(rnorm(ngenes*nsamples, mean = 0), nrow = ngenes)
+    rownames(scale_mat) <- paste0("G", 1:ngenes)
+    colnames(scale_mat) <- paste0("S", 1:nsamples)
     clust_assign <- data.frame(
         gene = rownames(scale_mat),
-        cluster = c(rep(1, n / 50), rep(2, n / 50)),
-        value = rnorm(n, 100, 10)
+        cluster = c(rep(1, ngenes / 50), rep(2, ngenes / 50)),
+        value = rnorm(ngenes, 100, 10)
     )
     ca <- calculate_cluster_corr(clust_assign, scale_mat, tempdir(), "red")
 })
 
 test_that("do_gene_plots", {
-    n <- 100
-    norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
-    rownames(norm_counts) <- paste0("G", 1:n)
-    colnames(norm_counts) <- paste0("S", 1:n)
-    scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
-    rownames(scale_mat) <- paste0("G", 1:n)
-    colnames(scale_mat) <- paste0("S", 1:n)
-    pheno <- data.frame(
-        sample = paste0("S", 1:n),
-        condition = c(rep("red", n / 2), rep("green", n / 2)),
-        time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
-    )
+    ngenes <- 100
+    tmp <- make_mat_and_phenotype(ngenes=ngenes, nsamples=10, mean = 5, var=1)
+    norm_counts <- apply(tmp$mat, 1:2, as.numeric) * 1.5  ## decimal
+    scale_mat <- t(scale(t(norm_counts)))
+    pheno <- tmp$pheno
+
     gene_cluster_scores <- data.frame(
         gene = rownames(scale_mat),
-        cluster = c(rep(1, n / 50), rep(2, n / 50)),
-        score = rnorm(n, 0.5, 0.25)
+        cluster = c(rep(1, ngenes / 50), rep(2, ngenes / 50)),
+        score = rnorm(ngenes, 0.5, 0.25)
     )
     score_thresh <- c(0.2, 0.3)
     genes_of_interest <- paste0("G", 5:50)
@@ -99,9 +98,9 @@ test_that("do_gene_plots", {
 
 test_that("single_kmeans_heatmap", {
     n <- 100
-    scale_mat <- matrix(rnorm(n**2, mean = 5), nrow = n)
+    scale_mat <- matrix(rnorm(n*10, mean = 5), nrow = n)
     rownames(scale_mat) <- paste0("G", 1:n)
-    colnames(scale_mat) <- paste0("S", 1:n)
+    colnames(scale_mat) <- paste0("S", 1:10)
     top_genes <- paste0("G", n - 50:n - 20)
     res <- single_kmeans_heatmap(scale_mat, 2, top_genes, "test", "test",
                                 out_dir = tempdir(), "test", 7, 7)

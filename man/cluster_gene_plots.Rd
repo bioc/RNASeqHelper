@@ -9,8 +9,8 @@ cluster_gene_plots(tab, score_thresh = 0, out_dir = "gene_cluster")
 \arguments{
 \item{tab}{A dataframe with long plotting data containing at least
 the columns \code{cluster}, \code{condition}, \code{value},
-\code{time}, and \code{score}. It can take normalised or scaled
-values as input.}
+\code{score}, and optionally \code{time}. It can take
+normalised or scaled values as input.}
 
 \item{score_thresh}{numeric threshold to filter out genes with
 correlation scores not matching these values}

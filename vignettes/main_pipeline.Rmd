@@ -73,7 +73,6 @@ We also might want some gene plots for some genes of interest. We can
 either load some pre-defined lists via:
 
 ```{r}
-
 gois_list <- source(system.file("extdata", "gois.R", package="RNASeqHelper"))
 gois_list
 ```
@@ -86,7 +85,6 @@ We will instead construct our own, following the schema of "name" ->
 vector of genes.
 
 ```{r}
-
 gois_list <- list(apple = paste0("G", 100:105),
                 banana = paste0("G", 810:819),
                 carrot = paste0("G", 256:260))
@@ -212,7 +210,8 @@ analysis.
 
 
 ```{r}
-rnaseqhelper(mat, phenotype_data, out_dir=file.path(tempdir(), "second_analysis"),
+rnaseqhelper(mat, phenotype_data,
+            out_dir=file.path(tempdir(), "second_analysis"),
             numer = "green", denom = "blue",
             keep_params = list(min_occur=8, min_detect=20),
             heat_params = list(top_ngenes_tocluster = 1000,

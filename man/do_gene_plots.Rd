@@ -47,25 +47,26 @@ Perform cluster gene plots for normalised and scaled
 data as well as plotting genes of interest for both.
 }
 \examples{
-n <- 100
-norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
-rownames(norm_counts) <- paste0("G", 1:n)
-colnames(norm_counts) <- paste0("S", 1:n)
-scale_mat <- matrix(rnorm(n**2, mean = 0), nrow = n)
-rownames(scale_mat) <- paste0("G", 1:n)
-colnames(scale_mat) <- paste0("S", 1:n)
+ngenes <- 100
+nsamples <- 6
+norm_counts <- matrix(rnorm(ngenes * nsamples, mean = 5), nrow = ngenes)
+rownames(norm_counts) <- paste0("G", 1:ngenes)
+colnames(norm_counts) <- paste0("S", 1:nsamples)
+scale_mat <- matrix(rnorm(ngenes * nsamples, mean = 0), nrow = ngenes)
+rownames(scale_mat) <- rownames(norm_counts)
+colnames(scale_mat) <- colnames(norm_counts)
 pheno <- data.frame(
-    sample = paste0("S", 1:n),
-    condition = c(rep("red", n / 2), rep("green", n / 2)),
-    time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+    sample = colnames(scale_mat),
+    condition = c(rep("red", nsamples / 2), rep("green", nsamples / 2)),
+    time = as.integer(rnorm(nsamples, 2, 0.5) + 1) * 5
 )
 gene_cluster_scores <- data.frame(
     gene = rownames(scale_mat),
-    cluster = c(rep(1, n / 50), rep(2, n / 50)),
-    score = rnorm(n, 0.5, 0.25)
+    cluster = c(rep(1, ngenes / 50), rep(2, ngenes / 50)),
+    score = rnorm(ngenes, 0.5, 0.25)
 )
 score_thresh <- c(0.2, 0.3)
-genes_of_interest <- paste0("G", 5:50)
+genes_of_interest <- paste0("G", 5:15)
 res <- do_gene_plots(norm_counts, scale_mat, pheno,
                     gene_cluster_scores, score_thresh,
                     genes_of_interest,
