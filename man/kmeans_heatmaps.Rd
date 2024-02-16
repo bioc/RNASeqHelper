@@ -9,12 +9,12 @@ kmeans_heatmaps(
     trans,
     pheno,
     genes,
-    sample_columns = NULL,
     dsqres,
     k,
     out_dir,
     heatprefix,
-    plot_title
+    plot_title,
+    sample_columns = NULL
 )
 }
 \arguments{
@@ -33,9 +33,6 @@ plot, where if NULL, use \code{highlight}, and if FALSE do not use;
 thresholds to filter for high quality genes in each cluster
 before plotting. Default is \code{c(0, 0.5, 0.9, 0.99)}}
 
-\item{sample_columns}{a vector of sample names. If NULL (the
-default), then use all samples}
-
 \item{dsqres}{the output of the DESeq2 function \code{results},
 usually called after performing a contrast.}
 
@@ -47,6 +44,9 @@ tables and plots.}
 \item{heatprefix}{String to prefix heatmap plot filenames}
 
 \item{plot_title}{String depicting title to embed into plot}
+
+\item{sample_columns}{a vector of sample names. If NULL (the
+default), then use all samples}
 }
 \value{
 None.

@@ -4,7 +4,7 @@
 \alias{high_quality_genes}
 \title{Get a high quality genes list}
 \usage{
-high_quality_genes(sam_mat, min_occur = 3, min_detect = 10, out_dir)
+high_quality_genes(sam_mat, min_occur = 3, min_detect = 10, out_dir = ".")
 }
 \arguments{
 \item{sam_mat}{A numeric matrix. Genes are rows and Samples as
@@ -22,7 +22,7 @@ equal to) for the minimum expression a gene can have for it to
 be a valid occurrence in a sample. Default values is 10.}
 
 \item{out_dir}{A string depicting the output directory to place
-tables.}
+tables. Defaults to current.}
 }
 \value{
 A vector of strings depicting a list of high quality genes.

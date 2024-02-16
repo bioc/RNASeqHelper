@@ -46,7 +46,7 @@ matrix.
 Plot a clustered heatmap
 }
 \examples{
-options(bitmapType='cairo') ## disable plotting to X11
+with_options(bitmapType='cairo') ## disable plotting to X11
 n <- 100
 scale_mat <- matrix(rnorm(n**2, mean = 5), nrow = n)
 rownames(scale_mat) <- paste0("G", 1:n)

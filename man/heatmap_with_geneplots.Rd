@@ -53,7 +53,7 @@ Generate a clustered heatmaps for a specific k means
 value.
 }
 \examples{
-options(bitmapType='cairo') ## disable plotting to X11
+with_options(bitmapType='cairo') ## disable plotting to X11
 n <- 100
 norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
 pheno <- data.frame(sample=paste0("S", 1:n),

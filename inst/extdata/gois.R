@@ -32,7 +32,7 @@ gois_list <- list(
              "Tdgf1", "Wnt3", "Tgfb1", "Nodal", "Dact1", "Bmp4", "Dll1",
              "Hey1", "Hhex", "Id1", "Dmbx1", "Dpf3", "Sall1", "Foxa1",
              "Tcf7l2", "Hesx1", "Tcf7l1", "Hdac7", "Otx2", "Fbn2", "Otx1"),
-  other2 <- c("Six3", "Fabp7", "Ntrk2", "Zic1", "Mab21l2", "Nefl", "Olig3",
+  other2 = c("Six3", "Fabp7", "Ntrk2", "Zic1", "Mab21l2", "Nefl", "Olig3",
               "Pou4f2", "Nkx1-2", "Sox3", "Sema3c", "Epha2", "Zic3", "Efnb1",
               "Radil", "Syt11", "Slc7a3", "Nes", "Zic5", "Snph", "Nfasc",
               "Pou4f1", "Elavl3", "Nrcam", "Grin1", "Gfra3", "Phox2a", "Nkx6-2",

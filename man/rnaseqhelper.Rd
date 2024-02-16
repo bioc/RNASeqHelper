@@ -7,9 +7,9 @@
 rnaseqhelper(
     tab,
     phenotype_data,
-    out_dir = tempdir(),
     numer,
     denom,
+    out_dir = tempdir(),
     keep_params = list(),
     heat_params = list(),
     volcano_params = list()
@@ -22,9 +22,6 @@ rnaseqhelper(
 columns for annotation groups. One of these groups must be
 condition and will be used to normalize the data.}
 
-\item{out_dir}{String depicting the output directory to place
-tables and plots.}
-
 \item{numer}{A string value to select sample columns from the
 \code{condition} column that will be part of the numerator part
 of the contrast.}
@@ -32,6 +29,9 @@ of the contrast.}
 \item{denom}{A string value to select sample columns from the
 \code{condition} column, that will be the denominator part of
 the contrast.}
+
+\item{out_dir}{String depicting the output directory to place
+tables and plots.}
 
 \item{keep_params}{A list of two components \code{min_occur} and
 \code{min_detect} as defined by the default
@@ -54,7 +54,7 @@ analysis and perform a full analysis from a few starting
 parameters
 }
 \examples{
-options(bitmapType = "cairo") ## disable plotting to X11
+with_options(bitmapType = "cairo") ## disable plotting to X11
 ngenes <- 1000
 nsamples <- 10
 tab <- matrix(as.integer(rnorm(ngenes * nsamples, 1000, 500)),
@@ -68,8 +68,8 @@ phenotype_data <- data.frame(
     condition = c(rep("red", nsamples / 2), rep("green", nsamples / 2)),
     time = as.integer(rnorm(nsamples, 2, 0.5) + 1) * 5
 )
-rnaseqhelper(tab, phenotype_data,
-    out_dir = tempdir(), "green", "red",
+rnaseqhelper(tab, phenotype_data, "green", "red",
+    out_dir = tempdir(),
     heat_params = list(
         score_thresh = c(0.5),
         kmeans_list = 2

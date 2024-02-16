@@ -6,9 +6,9 @@
 \usage{
 pairwise_hmap_volcano(
     ddsObj,
-    transformed_counts = NULL,
     numer,
     denom,
+    transformed_counts = NULL,
     top_ngenes_tocluster = 2000,
     top_ngenes_tohighlight = 50,
     score_thresh = c(0.5, 0.9),
@@ -21,8 +21,6 @@ pairwise_hmap_volcano(
 \arguments{
 \item{ddsObj}{A DESeq object,}
 
-\item{transformed_counts}{REALLY UNSURE WHAT'S GOING ON HERE}
-
 \item{numer}{A string value to select sample columns from the
 \code{condition} column that will be part of the numerator part
 of the contrast.}
@@ -30,6 +28,8 @@ of the contrast.}
 \item{denom}{A string value to select sample columns from the
 \code{condition} column, that will be the denominator part of
 the contrast.}
+
+\item{transformed_counts}{A data frame of transformed count data.}
 
 \item{top_ngenes_tocluster}{A positive integer. How many of the top
 log10 padj values to take. Default is 2000.}
@@ -73,14 +73,16 @@ ngene <- 1000
 nsample <- 10
 tab <- matrix(as.integer(rnorm(ngene * nsample, 1000, 500)), ncol = nsample)
 tab <- tab - min(tab)
-rownames(tab) <- paste0("G", seq_along(ngene))
-colnames(tab) <- paste0("S", seq_along(nsample))
+rownames(tab) <- paste0("G", seq(ngene))
+colnames(tab) <- paste0("S", seq(nsample))
 phenotype_data <- data.frame(
     sample = colnames(tab),
     condition = c(rep("red", nsample / 2), rep("green", nsample / 2)),
-    time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+    time = as.integer(rnorm(nsample, 2, 0.5) + 1) * 5
 )
 keep_genes <- rownames(tab)
 res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
-pairwise_hmap_volcano(res$ddsObj, assay(res$vFalse), "red", "green")
+pairwise_hmap_volcano(res[["ddsObj"]], "red", "green",
+    assay(res[["vFalse"]]), kmeans_list = 3
+)
 }

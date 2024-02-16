@@ -24,6 +24,7 @@
 #'     counts
 #' @importFrom SummarizedExperiment assay colData
 #' @importFrom svglite svglite
+#' @importFrom withr with_options
 
 # Note: Hmisc is required for ggplot's mean_sdl to work correctly.
 
@@ -37,14 +38,14 @@
 #' @param phenotype_data a table with samples (rows) with extra
 #'     columns for annotation groups. One of these groups must be
 #'     condition and will be used to normalize the data.
-#' @param out_dir String depicting the output directory to place
-#'     tables and plots.
 #' @param numer A string value to select sample columns from the
 #'     \code{condition} column that will be part of the numerator part
 #'     of the contrast.
 #' @param denom A string value to select sample columns from the
 #'     \code{condition} column, that will be the denominator part of
 #'     the contrast.
+#' @param out_dir String depicting the output directory to place
+#'     tables and plots.
 #' @param keep_params A list of two components \code{min_occur} and
 #'     \code{min_detect} as defined by the default
 #'     \code{high_quality_genes} function.
@@ -56,7 +57,7 @@
 #'     default.
 #' @return None.
 #' @examples
-#' options(bitmapType = "cairo") ## disable plotting to X11
+#' with_options(bitmapType = "cairo") ## disable plotting to X11
 #' ngenes <- 1000
 #' nsamples <- 10
 #' tab <- matrix(as.integer(rnorm(ngenes * nsamples, 1000, 500)),
@@ -70,38 +71,35 @@
 #'     condition = c(rep("red", nsamples / 2), rep("green", nsamples / 2)),
 #'     time = as.integer(rnorm(nsamples, 2, 0.5) + 1) * 5
 #' )
-#' rnaseqhelper(tab, phenotype_data,
-#'     out_dir = tempdir(), "green", "red",
+#' rnaseqhelper(tab, phenotype_data, "green", "red",
+#'     out_dir = tempdir(),
 #'     heat_params = list(
 #'         score_thresh = c(0.5),
 #'         kmeans_list = 2
 #'     )
 #' )
 #' @export
-rnaseqhelper <- function(tab, phenotype_data, out_dir = tempdir(),
-                        numer, denom,
-                        keep_params = list(),
+rnaseqhelper <- function(tab, phenotype_data, numer, denom,
+                        out_dir = tempdir(), keep_params = list(),
                         heat_params = list(), volcano_params = list()) {
     keep_params_defaults <- as.list(formals(high_quality_genes))
     keep_params <- modifyList(keep_params_defaults, keep_params)
-    keep_params$sam_mat <- tab
-    keep_params$out_dir <- file.path(out_dir, "0_genes")
+    keep_params[["sam_mat"]] <- tab
+    keep_params[["out_dir"]] <- file.path(out_dir, "0_genes")
 
     keep_genes <- do.call(high_quality_genes, keep_params)
 
     res <- run_deseq(tab, keep_genes, phenotype_data,
         out_dir = file.path(out_dir, "1_matrices_and_deseq")
     )
-    ## res$ddsObj
-    ## out_dirprefix="test/outputs"
     heat_params_defaults <- as.list(formals(pairwise_hmap_volcano))
     heat_params <- modifyList(heat_params_defaults, heat_params)
-    heat_params$ddsObj <- res$ddsObj
-    heat_params$transformed_counts <- assay(res$vFalse)
-    heat_params$out_dirprefix <- file.path(out_dir, "2_heatmaps")
-    heat_params$numer <- numer
-    heat_params$denom <- denom
-    heat_params$phv <- do.call(pairwise_hmap_volcano, heat_params)
+    heat_params[["ddsObj"]] <- res[["ddsObj"]]
+    heat_params[["transformed_counts"]] <- assay(res[["vFalse"]])
+    heat_params[["out_dirprefix"]] <- file.path(out_dir, "2_heatmaps")
+    heat_params[["numer"]] <- numer
+    heat_params[["denom"]] <- denom
+    heat_params[["phv"]] <- do.call(pairwise_hmap_volcano, heat_params)
 }
 
 #' @title Run DESeq with sensible defaults
@@ -122,12 +120,12 @@ rnaseqhelper <- function(tab, phenotype_data, out_dir = tempdir(),
 #' nsample <- 10
 #' tab <- matrix(as.integer(rnorm(ngene * nsample, 1000, 500)), ncol = nsample)
 #' tab <- tab - min(tab)
-#' rownames(tab) <- paste0("G", seq_along(ngene))
-#' colnames(tab) <- paste0("S", seq_along(nsample))
+#' rownames(tab) <- paste0("G", seq(ngene))
+#' colnames(tab) <- paste0("S", seq(nsample))
 #' phenotype_data <- data.frame(
 #'     sample = colnames(tab),
 #'     condition = c(rep("red", nsample / 2), rep("green", nsample / 2)),
-#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+#'     time = as.integer(rnorm(nsample, 2, 0.5) + 1) * 5
 #' )
 #' keep_genes <- rownames(tab)
 #' res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
@@ -147,10 +145,10 @@ run_deseq <- function(tab, keep_genes, phenotype_data, out_dir) {
     ddsObj <- DESeq(ddsObj)
 
     vsd1 <- vst(ddsObj, blind = FALSE)
-    p1 <- plotPCA(vsd1, intgroup = c("condition"),
+    p1 <- plotPCA(vsd1, intgroup = "condition",
                 returnData = FALSE)
     vsd2 <- vst(ddsObj, blind = TRUE)
-    p2 <- plotPCA(vsd2, intgroup = c("condition"),
+    p2 <- plotPCA(vsd2, intgroup = "condition",
                 returnData = FALSE)
     res <- list(
         tab = tab, phenotype = phenotype_data,
@@ -172,26 +170,26 @@ run_deseq <- function(tab, keep_genes, phenotype_data, out_dir) {
 pca_and_matrices <- function(res, out_dir = "deseq2") {
     ## Initial input matrices
     dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-    res$tab %>%
+    res[["tab"]] %>%
         as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(file.path(out_dir, "input_matrix.tsv"))
 
-    res$phenotype %>% write_tsv(file.path(out_dir, "phenotype_data.tsv"))
+    res[["phenotype"]] %>% write_tsv(file.path(out_dir, "phenotype_data.tsv"))
 
     saveRDS(res, file.path(out_dir, "deseq2obj.rds"))
 
-    res$sub %>%
+    res[["sub"]] %>%
         as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(file.path(out_dir, "input_matrix.filt.tsv"))
 
-    counts(res$ddsObj, normalized = TRUE) %>%
+    counts(res[["ddsObj"]], normalized = TRUE) %>%
         as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(file.path(out_dir, "input_matrix.filt.normalized.tsv"))
 
-    assay(res$vFalse) %>%
+    assay(res[["vFalse"]]) %>%
         as.data.frame() %>%
         rownames_to_column("gene") %>%
         write_tsv(
@@ -208,8 +206,8 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
         ),
         width = 7, height = 7
     )
-    plot(res$bFalse)
-    plot(res$bTrue)
+    plot(res[["bFalse"]])
+    plot(res[["bTrue"]])
     dev.off()
 }
 
@@ -229,10 +227,13 @@ pca_and_matrices <- function(res, out_dir = "deseq2") {
 #' dsqres <- data.frame(mLog10Padj = 1:10 / 10, gene = paste0("G", 1:10))
 #' RNASeqHelper:::top_n_genes(dsqres, 3, out_dir = tempdir(), prefix = "test")
 top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
-    tgenes <- (dsqres %>% arrange(desc(.data[["mLog10Padj"]])) %>%
-                head(top_ng))$gene
-    write_tsv(data.frame(tgenes = tgenes),
-                file.path(out_dir, paste0(prefix, top_ng, ".tsv")))
+    tgenes <- (dsqres %>%
+        arrange(desc(.data[["mLog10Padj"]])) %>%
+        head(top_ng))[["gene"]]
+    write_tsv(
+        data.frame(tgenes = tgenes),
+        file.path(out_dir, paste0(prefix, top_ng, ".tsv"))
+    )
     return(tgenes)
 }
 
@@ -242,13 +243,13 @@ top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
 #'     DE genes and a pairwise one with just the numerator and
 #'     denominator samples.
 #' @param ddsObj A DESeq object,
-#' @param transformed_counts REALLY UNSURE WHAT'S GOING ON HERE
 #' @param numer A string value to select sample columns from the
 #'     \code{condition} column that will be part of the numerator part
 #'     of the contrast.
 #' @param denom A string value to select sample columns from the
 #'     \code{condition} column, that will be the denominator part of
 #'     the contrast.
+#' @param transformed_counts A data frame of transformed count data.
 #' @param top_ngenes_tocluster A positive integer. How many of the top
 #'     log10 padj values to take. Default is 2000.
 #' @param top_ngenes_tohighlight A positive integer. How many of the
@@ -276,25 +277,27 @@ top_n_genes <- function(dsqres, top_ng, out_dir, prefix) {
 #' nsample <- 10
 #' tab <- matrix(as.integer(rnorm(ngene * nsample, 1000, 500)), ncol = nsample)
 #' tab <- tab - min(tab)
-#' rownames(tab) <- paste0("G", seq_along(ngene))
-#' colnames(tab) <- paste0("S", seq_along(nsample))
+#' rownames(tab) <- paste0("G", seq(ngene))
+#' colnames(tab) <- paste0("S", seq(nsample))
 #' phenotype_data <- data.frame(
 #'     sample = colnames(tab),
 #'     condition = c(rep("red", nsample / 2), rep("green", nsample / 2)),
-#'     time = as.integer(rnorm(n, 2, 0.5) + 1) * 5
+#'     time = as.integer(rnorm(nsample, 2, 0.5) + 1) * 5
 #' )
 #' keep_genes <- rownames(tab)
 #' res <- run_deseq(tab, keep_genes, phenotype_data, tempdir())
-#' pairwise_hmap_volcano(res$ddsObj, assay(res$vFalse), "red", "green")
+#' pairwise_hmap_volcano(res[["ddsObj"]], "red", "green",
+#'     assay(res[["vFalse"]]), kmeans_list = 3
+#' )
 #' @export
-pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
-                                    numer, denom,
+pairwise_hmap_volcano <- function(ddsObj, numer, denom,
+                                    transformed_counts = NULL,
                                     top_ngenes_tocluster = 2000,
                                     top_ngenes_tohighlight = 50,
                                     score_thresh = c(0.5, 0.9),
                                     genes_of_interest = NULL,
                                     volcano_params = NULL,
-                                    kmeans_list = c(2,5,8,16),
+                                    kmeans_list = c(2, 5, 8, 16),
                                     out_dirprefix = ".") {
     message("Started Analysis: ", date())
     plot_title <- paste0(numer, " vs ", denom)
@@ -304,7 +307,7 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
     ## 1. Perform RNA-seq contrast between numerator and denominator
     dsqres <- results(ddsObj, contrast = c("condition", numer, denom),
                         cooksCutoff = Inf, independentFiltering = FALSE) %>%
-        as.data.frame %>% rownames_to_column("gene") %>%
+        as.data.frame() %>% rownames_to_column("gene") %>%
         mutate(mLog10Padj = -log10(.data[["padj"]]))
 
     norm_counts <- counts(ddsObj, normalized = TRUE)
@@ -317,8 +320,8 @@ pairwise_hmap_volcano <- function(ddsObj, transformed_counts = NULL,
     ## Sample columns are selected from numer and denom in the condition
     pheno <- colData(ddsObj)
     sample_columns <- c(
-        pheno[pheno$condition == numer, ]$sample,
-        pheno[pheno$condition == denom, ]$sample
+        pheno[pheno[["condition"]] == numer, ][["sample"]],
+        pheno[pheno[["condition"]] == denom, ][["sample"]]
     )
     genes <- list(
         cluster = top_genes_tocluster, highlight = top_genes_tohighlight,
@@ -364,11 +367,11 @@ do_kmeans <- function(norm_counts, transformed_counts, phenotype_data,
     p1<- kmeans_heatmaps(
         norm_counts, transformed_counts, phenotype_data,
         genes = genes,
-        sample_columns = sample_columns,
         dsqres, k,
         out_dir = file.path(out_dir, paste0("kmeans", k)),
         heatprefix = "heatmap_pairwise",
-        plot_title = "Heatmap Pairwise")
+        plot_title = "Heatmap Pairwise",
+        sample_columns = sample_columns)
 
     ## This below will produce different scaled matrices than the
     ## one above. We can't really pass these back. All we can do
@@ -380,11 +383,11 @@ do_kmeans <- function(norm_counts, transformed_counts, phenotype_data,
     p2 <- kmeans_heatmaps(
         norm_counts, transformed_counts, phenotype_data,
         genes = genes,
-        sample_columns = NULL,
         dsqres, k,
         out_dir = file.path(out_dir, paste0("kmeans", k)),
         heatprefix = "heatmap_all",
-        plot_title = "Heatmap All")
+        plot_title = "Heatmap All",
+        sample_columns = NULL)
 }
 
 #' @title Nice K-means Heatmap
@@ -394,8 +397,6 @@ do_kmeans <- function(norm_counts, transformed_counts, phenotype_data,
 #' @param trans a matrix of transformed counts, VST or other produced
 #'     by DESeq2.
 #' @param pheno a data.frame of phenotype data
-#' @param sample_columns a vector of sample names. If NULL (the
-#'     default), then use all samples
 #' @param genes A list with at least 4 components: \code{cluster}, a vector
 #'     of genes to use for clustering, \code{highlight}, a vector of genes
 #'     to highlight in the heatmap; \code{interest}, a list of genes to
@@ -410,13 +411,15 @@ do_kmeans <- function(norm_counts, transformed_counts, phenotype_data,
 #'     tables and plots.
 #' @param heatprefix String to prefix heatmap plot filenames
 #' @param plot_title String depicting title to embed into plot
+#' @param sample_columns a vector of sample names. If NULL (the
+#'     default), then use all samples
 #' @return None.
 kmeans_heatmaps <- function(norms, trans, pheno,
-                            genes, sample_columns = NULL,
-                            dsqres, k, out_dir, heatprefix, plot_title) {
-    if (is.null(genes$cluster)) {
+                            genes, dsqres, k, out_dir, heatprefix,
+                            plot_title, sample_columns = NULL) {
+    if (is.null(genes[["cluster"]])) {
         message(" - Using all genes in normalised matrix for clustering")
-        genes$cluster <- rownames(norms)
+        genes[["cluster"]] <- rownames(norms)
     }
     if (is.null(sample_columns)) {
         message(" - Heatmap all samples in normalised matrix for clustering")
@@ -431,25 +434,25 @@ kmeans_heatmaps <- function(norms, trans, pheno,
     }
     message("   - Using normalized counts")
     res_dsqres <- heatmap_with_geneplots(
-        norms[genes$cluster, sample_columns], pheno, k = k, genes = genes,
+        norms[genes[["cluster"]], sample_columns], pheno, k = k, genes = genes,
         out_dir = out_dir,
-        heatprefix = heatprefix, prefix_title = paste0(plot_title, " :"),
+        heatprefix = heatprefix, prefix_title = paste0(plot_title, " :")
     )
-    dsq_dsq <- left_join(dsqres, res_dsqres$clusters,
-                        by = c("gene" = "gene")) %>%
+    dsq_dsq <- left_join(dsqres, res_dsqres[["clusters"]],
+                        by = c(gene = "gene")) %>%
         mutate(norm_cluster = case_when(
                 is.na(.data[["cluster"]]) ~ "not in norm heatmap",
                 TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
     if (!is.null(trans)) { ## Heatmaps using Corrected Normalized Counts
         message("   - Using transformed counts too")
         res_dsqres_trans <- heatmap_with_geneplots(
-            trans[genes$cluster, sample_columns], pheno, k = k,
+            trans[genes[["cluster"]], sample_columns], pheno, k = k,
             genes = genes, out_dir = out_dir,
             heatprefix = paste0(heatprefix, ".vst_corrected"),
             prefix_title = paste0(plot_title, " (vst corrected) :")
         )
-        dsq_dsq <- left_join(dsq_dsq, res_dsqres_trans$clusters,
-                                by = c("gene" = "gene")) %>%
+        dsq_dsq <- left_join(dsq_dsq, res_dsqres_trans[["clusters"]],
+                                by = c(gene = "gene")) %>%
             mutate(trans_cluster = case_when(
                 is.na(.data[["cluster"]]) ~ "not in trans heatmap",
                 TRUE ~ .data[["cluster"]])) %>% select(-.data[["cluster"]])
@@ -484,7 +487,7 @@ kmeans_heatmaps <- function(norms, trans, pheno,
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
-#' options(bitmapType='cairo') ## disable plotting to X11
+#' with_options(bitmapType='cairo') ## disable plotting to X11
 #' n <- 100
 #' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' pheno <- data.frame(sample=paste0("S", 1:n),
@@ -504,20 +507,20 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
                                     prefix_title = "",
                                     width_in = 6, height_in = 6) {
     ## normalised counts should be in the correct sample order already
-    options(repr.plot.height = height_in, repr.plot.width = width_in)
-    if (!dir.exists(out_dir)) { dir.create(out_dir) }
-    if (is.null(genes$highlight)) {
+    with_options(repr.plot.height = height_in, repr.plot.width = width_in)
+    if (!dir.exists(out_dir)) dir.create(out_dir)
+    if (is.null(genes[["highlight"]])) {
         top_genes <- head(names(sort(rowMeans(norm_counts),   ## If no genes
                                     decreasing = TRUE)), 30)   ## given show
         top_title <- paste0(nrow(norm_counts), " DE genes, top ", ## top N
                             length(top_genes), " highlighted")
     } else {
-        top_genes <- genes$highlight
+        top_genes <- genes[["highlight"]]
         top_title <- paste0(nrow(norm_counts), " DE genes, ",
                             length(top_genes), " highlighted")
     }
-    if (is.null(genes$interest)) {
-        genes$interest <- list(topgenes = top_genes)
+    if (is.null(genes[["interest"]])) {
+        genes[["interest"]] <- list(topgenes = top_genes)
     }
     scale_mat <- t(scale(t(norm_counts)))
     scale_mat <- scale_mat[complete.cases(scale_mat), ] ## Remove 0s
@@ -536,11 +539,12 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
     write_tsv(as.data.frame(scale_mat) %>% rownames_to_column("gene"),
                 save_scale)
     message("     - Saved Scale: ", save_norm)
-    if (!is.null(genes$interest)) {
+    if (!is.null(genes[["interest"]])) {
         do_gene_plots(norm_counts, scale_mat, pheno_data,
-                        cluster_assignments_scores,
-                        score_thresh = genes$score_thresh,
-                        genes_of_interest = genes$interest, out_dir)
+            cluster_assignments_scores,
+            score_thresh = genes[["score_thresh"]],
+            genes_of_interest = genes[["interest"]], out_dir
+        )
     }
     return(list(clusters = cluster_assignments_scores, scaled = scale_mat))
 }
@@ -566,8 +570,8 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
 #' cac <- calculate_cluster_corr_i(clust_assign, scale_mat, 2)
 #' @export
 calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
-    clust_sub <- clust_assign[clust_assign$cluster == i, ]
-    genes_in_i <- clust_sub$gene
+    clust_sub <- clust_assign[clust_assign[["cluster"]] == i, ]
+    genes_in_i <- clust_sub[["gene"]]
     matrix_in_i <- scale_mat[genes_in_i, ]
     mean_of_samples_in_i <- colMeans(matrix_in_i)
 
@@ -614,7 +618,7 @@ calculate_cluster_corr_i <- function(clust_assign, scale_mat, i) {
 #' @export
 calculate_cluster_corr <- function(clust_assign, scale_mat,
                                     out_dir, prefix_str) {
-    all_clusters <- unique(sort(clust_assign$cluster))
+    all_clusters <- unique(sort(clust_assign[["cluster"]]))
     clust_assignments <- do.call(rbind, lapply(all_clusters, function(cl) {
         calculate_cluster_corr_i(clust_assign, scale_mat, cl)
     }))
@@ -683,16 +687,16 @@ do_gene_plots <- function(norm_counts, scale_mat, pheno_data,
     long_norm <- left_join(
         left_join(
             as.data.frame(t(norm_counts)) %>% rownames_to_column("sample"),
-            as.data.frame(pheno_data), by = "sample" ) %>%
+            as.data.frame(pheno_data), by = "sample") %>%
         pivot_longer(all_of(rownames(norm_counts)), names_to = "gene"),
-        gene_cluster_scores, by = "gene" )
+        gene_cluster_scores, by = "gene")
 
     long_scale <- left_join(
         left_join(
             as.data.frame(t(scale_mat)) %>% rownames_to_column("sample"),
-            as.data.frame(pheno_data), by = "sample" ) %>%
+            as.data.frame(pheno_data), by = "sample") %>%
         pivot_longer(all_of(rownames(scale_mat)), names_to = "gene"),
-        gene_cluster_scores, by = "gene" )
+        gene_cluster_scores, by = "gene")
 
     gene_clusters_by_score(long_norm,
                             score_thresh = score_thresh,
@@ -754,7 +758,7 @@ cluster_assignments <- function(hm_now_drawn, matobj) {
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
-#' options(bitmapType='cairo') ## disable plotting to X11
+#' with_options(bitmapType='cairo') ## disable plotting to X11
 #' n <- 100
 #' scale_mat <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' rownames(scale_mat) <- paste0("G", 1:n)
@@ -771,8 +775,9 @@ single_kmeans_heatmap <- function(scale_mat, k, top_genes,
         foo = anno_mark(
             at = which(rownames(scale_mat) %in% top_genes),
             labels = top_genes))
-    if (k > 5) { rtitle <- "%s" }
-    else { rtitle <- "Clust %s" }
+    if (k > 5) rtitle <- "%s"
+    else rtitle <- "Clust %s"
+
     hm_now <- Heatmap(
         scale_mat, column_title = paste0(prefix_title, "  ", top_title),
         row_km = k, cluster_row_slices = FALSE, ## Arrange the K? NO
@@ -789,23 +794,16 @@ single_kmeans_heatmap <- function(scale_mat, k, top_genes,
     output_prefix <- file.path(out_dir,
                                 paste0(heatprefix, ".k", k, "."))
     save_svg <- paste0(output_prefix, "svg")
-    ## save_svgold <- paste0(output_prefix, "_old.svg")
     save_pdf <- paste0(output_prefix, "pdf")
-    ## save_png <- paste0(output_prefix, "png")
     save_scale <- paste0(output_prefix, "scale.tsv")
     save_norm <- paste0(output_prefix, "norm.tsv")
-    ## save_cluster <- paste0(output_prefix, "clusters.tsv")
-    ##bhm <- better_pheatmap(hm_now)
-    ##svg(save_svgold, width = width_in, height = height_in)
-    ##print(hm_now)
-    ##dev.off()
 
     svg(save_svg, width = width_in, height = height_in)
-    plot(hm_now)     ##grid.draw(bhm);
+    plot(hm_now)
     dev.off()
 
     pdf(save_pdf, width = width_in, height = height_in)
-    plot(hm_now)     ##grid.draw(bhm); grid.newpage()
+    plot(hm_now)
     dev.off()
     return(cluster_assignments)
 }
@@ -821,28 +819,31 @@ better_pheatmap <- function(ph) {
     message("-[better_pheatmap]-")
     if (inherits(ph) == "Heatmap") { ## ComplexHeatmap
         ph <- grid.grabExpr(draw(ph))
-        hmaps <- ph$children
+        hmaps <- ph[["children"]]
         for (hm in names(hmaps)) { ## Get all Rects
-            rects <- names(ph$children[[hm]]$children)
+            rects <- names(ph[["children"]][[hm]][["children"]])
             if (length(rects) > 0) {
-                ## rects = names(ph$children[[hm]]$children)
                 for (rr in rects) { ## Check for rects with tabular data
-                    hasdim <- dim(ph$children[[hm]]$
-                        children[[rr]]$gp$fill)
+                    hasdim <- dim(ph[["children"]][[hm
+                        ]][["children"]][[rr]][["gp"]][["fill"]])
                     if (!is.null(hasdim)) {
-                        ph$children[[hm]]$children[[rr]]$gp$col <-
-                            ph$children[[hm]]$children[[rr]]$gp$fill
-                        ph$children[[hm]]$children[[rr]]$gp$lwd <- lwdd
+                        ph[["children"]][[hm]][["children"]][[rr
+                            ]][["gp"]][["col"]] <-
+                            ph[["children"]][[hm]][["children"]][[rr
+                            ]][["gp"]][["fill"]]
+                        ph[["children"]][[hm]][["children"]][[rr
+                            ]][["gp"]][["lwd"]] <- lwdd
                     }
                 }
             } else {
-                if ("gp" %in% names(ph$children[[hm]])) {
+                if ("gp" %in% names(ph[["children"]][[hm]])) {
                     ## Check for rects with tabular data
-                    hasdim <- dim(ph$children[[hm]]$gp$fill)
+                    hasdim <- dim(ph[["children"]][[hm]][["gp"]][["fill"]])
                     if (!is.null(hasdim)) {
                         message("Setting Cols for: ", hm)
-                        ph$children[[hm]]$gp$col <- ph$children[[hm]]$gp$fill
-                        ph$children[[hm]]$gp$lwd <- lwdd
+                        ph[["children"]][[hm]][["gp"
+                        ]][["col"]] <- ph[["children"]][[hm]][["gp"]][["fill"]]
+                        ph[["children"]][[hm]][["gp"]][["lwd"]] <- lwdd
                     }
                 }
             }
@@ -850,16 +851,20 @@ better_pheatmap <- function(ph) {
         return(ph)
     } else {
         ## PHEATMAP
-        grob_classes <- map(ph$gtable$grobs, class) ## Extract the right grob
-        idx_grob <- which(
+        grob_classes <- map(ph[["gtable"]][["grobs"]], class)
+        idx_grob <- which( ## Extract the right grob
             map_lgl(grob_classes, function(cl) "gTree" %in% cl)
-        )[1]
-        grob_names <- names(ph$gtable$grobs[[idx_grob]]$children)
-        idx_rect <- grob_names[grep("rect", grob_names)][1]
+        )[[1]]
+        grob_names <- names(ph[["gtable"
+            ]][["grobs"]][[idx_grob]][["children"]])
+        idx_rect <- grep("rect", grob_names, value = TRUE, fixed=TRUE)[[1]]
         ## Remove borders around cells
-        ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$col <-
-            ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$fill
-        ph$gtable$grobs[[idx_grob]]$children[[idx_rect]]$gp$lwd <- 3
+        ph[["gtable"]][["grobs"]][[idx_grob
+            ]][["children"]][[idx_rect]][["gp"]][["col"]] <-
+            ph[["gtable"]][["grobs"]][[idx_grob]][["children"
+            ]][[idx_rect]][["gp"]][["fill"]]
+        ph[["gtable"]][["grobs"]][[idx_grob]][["children"
+            ]][[idx_rect]][["gp"]][["lwd"]] <- 3
         return(ph)
     }
 }
@@ -880,7 +885,7 @@ better_pheatmap <- function(ph) {
 #'     equal to) for the minimum expression a gene can have for it to
 #'     be a valid occurrence in a sample. Default values is 10.
 #' @param out_dir A string depicting the output directory to place
-#'     tables.
+#'     tables. Defaults to current.
 #' @return A vector of strings depicting a list of high quality genes.
 #'     A table of rowSums is written to a file matching
 #'     "smallestGroup*-detected*-keep_genes".
@@ -895,10 +900,10 @@ better_pheatmap <- function(ph) {
 high_quality_genes <- function(sam_mat,
                                 min_occur = 3,
                                 min_detect = 10,
-                                out_dir) {
+                                out_dir = ".") {
     res <- rowSums(sam_mat >= min_detect) >= min_occur
-    keep_genes <- res[res == TRUE]
-    drop_genes <- res[res == FALSE]
+    keep_genes <- res[res]
+    drop_genes <- res[!res]
 
     if (!dir.exists(out_dir)) {
         dir.create(out_dir, recursive = TRUE)
@@ -965,19 +970,19 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
     }
     ## Volcano Plots
     p1 <- volcano_plot(dsqres, top_genes_tohighlight, plot_title,
-        curve = volcano_params$global$curve,
-        curve_show = volcano_params$global$curve_show
+        curve = volcano_params[["global"]][["curve"]],
+        curve_show = volcano_params[["global"]][["curve_show"]]
     )
     ## Volcano Plots zoomed in
     p2 <- volcano_plot(
         dsqres %>%
         filter(abs(.data[["log2FoldChange"]]) <
-                volcano_params$zoomed$lfc &
-                .data[["mLog10Padj"]] < volcano_params$zoomed$padj),
+                volcano_params[["zoomed"]][["lfc"]] &
+                .data[["mLog10Padj"]] < volcano_params[["zoomed"]][["padj"]]),
         top_genes_tohighlight, paste0(plot_title, " (zoomed)"),
-        curve = volcano_params$zoomed$curve,
-        ylim = volcano_params$zoomed$ylim,
-        curve_show = volcano_params$zoomed$curve_show
+        curve = volcano_params[["zoomed"]][["curve"]],
+        ylim = volcano_params[["zoomed"]][["ylim"]],
+        curve_show = volcano_params[["zoomed"]][["curve_show"]]
     )
 
     hmaps <- wrap_plots(list(p1, p2), ncol = 1, guides = "collect") &
@@ -1021,7 +1026,7 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
 volcano_plot <- function(dsqres, degenes, title,
                         curve = list(sd = 0.15, sc = 10, offset = 1),
                         curve_scale = 1, curve_show = FALSE, ylim = NULL) {
-    options(repr.plot.height = 12, repr.plot.width = 12)
+    with_options(repr.plot.height = 12, repr.plot.width = 12)
     ## Extract relevant info from DESeq results
     ana <- dsqres %>% select(c(.data[["gene"]], .data[["log2FoldChange"]],
                                 .data[["padj"]])) %>%
@@ -1033,8 +1038,8 @@ volcano_plot <- function(dsqres, degenes, title,
     }
     cfun <- function(x) { ## The slope function -- highlight these genes
         return(cust_fun(x,
-            sd = curve$sd * curve_scale,
-            sc = curve$sc * curve_scale, offset = curve$offset
+            sd = curve[["sd"]] * curve_scale,
+            sc = curve[["sc"]] * curve_scale, offset = curve[["offset"]]
         ))
     }
     ## We highlight genes in the zoomed zone fitting the curve, but
@@ -1045,7 +1050,7 @@ volcano_plot <- function(dsqres, degenes, title,
             (.data[["mLog10Padj"]] >
                 cust_fun(.data[["log2FoldChange"]])))
 
-    max_x <- max(abs(ana$log2FoldChange)) + 0.05 ## symmetry
+    max_x <- max(abs(ana[["log2FoldChange"]])) + 0.05 ## symmetry
     plot1 <- red %>% ggplot(aes_string(
                         x = "log2FoldChange", y = "mLog10Padj",
                         colour = "highlight", shape = "isTopN",
@@ -1055,7 +1060,7 @@ volcano_plot <- function(dsqres, degenes, title,
         scale_x_continuous(limits = c(-max_x, max_x), breaks = waiver(),
                         n.breaks = 10) +
         geom_label_repel(data = red %>%
-                            filter(.data[["highlight"]] == TRUE) %>%
+                            filter(.data[["highlight"]]) %>%
                             head(15), box.padding = 0.5, max.overlaps = 30,
                         colour = "black") + ggtitle(title)
 
@@ -1136,22 +1141,19 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
                                 out_dir = "gene_cluster") {
     tabn <- tab %>% filter(.data[["score"]] >= score_thresh)
     ## Keep all clusters even if they're empty
-    tabn$cluster <- factor(tabn$cluster, levels = unique(sort(tab$cluster)))
+    tabn[["cluster"]] <- factor(tabn[["cluster"]],
+                        levels = unique(sort(tab[["cluster"]])))
     dat_labs <- generate_labelling_table(tabn)
-    time_breaks <- sort(unique(sort(tab$time)))
+    time_breaks <- sort(unique(sort(tab[["time"]])))
     lab_fun <- function(s) {                    ## labelling function for facet
-        (dat_labs %>% filter(.data[["cluster"]] == s))$ftext
+        (dat_labs %>% filter(.data[["cluster"]] == s))[["ftext"]]
     }
     if ("time" %in% colnames(tabn)) {
-        message("Condition/Time Ribbon Plot for score_thresh=", score_thresh)
+        message("Condition per Time Ribbon Plot for score >=", score_thresh)
         p1 <- tabn %>% ggplot(aes_string(
             x = "time", y = "value", fill = "condition",
             colour = "condition", group = "condition"
             )) +
-            ## Individual gene lines to trace the background. TAKES TOO LONG.
-            ##geom_line(data=tabn,
-            ##          aes_string(x = "time", y = "value", group="gene"),
-            ##          colour = "grey", alpha = 0.1) +
             stat_summary(
                 fun.data = "mean_sdl", geom = "ribbon",
                 alpha = 0.1, colour = NA
@@ -1171,7 +1173,7 @@ cluster_gene_plots <- function(tab, score_thresh = 0,
     p2 <- p1 + facet_wrap("cluster", labeller = labeller(cluster = lab_fun),
                         drop = FALSE) +
         ylab("Scaled Expression") + ggtitle("Gene Trends by cluster",
-                subtitle = paste0("Genes (", length(unique(tabn$gene)),
+                subtitle = paste0("Genes (", length(unique(tabn[["gene"]])),
                     ") with cluster affinity scores >= ", score_thresh)) +
         theme_bw()
 
@@ -1211,7 +1213,7 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
         names(genes_of_interest), function(glist_name) {
             glist <- genes_of_interest[[glist_name]]
             genes_found <- unique((norm_long %>%
-                                    filter(.data[["gene"]] %in% glist))$gene)
+                filter(.data[["gene"]] %in% glist))[["gene"]])
             if (length(genes_found) < 1) {
                 message("       - ", glist_name, " (no genes found)")
                 return(NULL)
@@ -1256,19 +1258,15 @@ gene_plots_by_gene <- function(norm_long, scale_long, genes_of_interest,
 single_gene_plot <- function(long_data, genes_found, glist_name,
                             ylab_text, title_text,
                             out_dir, outprefix, filesuffix, scaley10) {
-    time_breaks <- sort(unique(sort(long_data$time)))
+    time_breaks <- sort(unique(sort(long_data[["time"]])))
     if ("time" %in% colnames(long_data)) {
-        message("Condition/Time Ribbon [", ylab_text, "]")
+        message("Condition per Time Ribbon [", ylab_text, "]")
         p1 <- long_data %>%
             filter(.data[["gene"]] %in% genes_found) %>%
             ggplot(aes_string(
                 x = "time", y = "value", fill = "condition",
                 colour = "condition", group = "condition"
             )) +
-            ## Individual gene lines to trace the background, TAKES TOO LONG.
-            ## geom_line(data=long_data,
-            ##           aes_string(x = "time", y = "value", group = "gene"),
-            ##           colour = "grey", alpha=0.15) +
             stat_summary(
                 fun.data = "mean_sdl", geom = "ribbon",
                 alpha = 0.1, colour = NA
@@ -1288,16 +1286,17 @@ single_gene_plot <- function(long_data, genes_found, glist_name,
         ylab(ylab_text) + ggtitle(title_text) +
         scale_x_continuous(breaks = time_breaks) + theme_bw()
 
-    if (scaley10) { pgene <- pgene + scale_y_log10() }
+    if (scaley10) pgene <- pgene + scale_y_log10()
     plot_dims <- function(n) { ## Calculates plot dims for a given N plots
-        w <- ceiling(sqrt(n)); return(list(w = w, h = ceiling(n / w)))
+        w <- ceiling(sqrt(n))
+        return(list(w = w, h = ceiling(n / w)))
     }
     pdims <- plot_dims(length(genes_found))
     ggsave(
         plot = pgene,
         filename = file.path(
             out_dir, paste0(outprefix, ".", glist_name, filesuffix)
-        ), dpi = 800, width = pdims$w * 2, height = pdims$h * 1.5,
+        ), dpi = 800, width = pdims[["w"]] * 2, height = pdims[["h"]] * 1.5,
         units = "in"
     )
     return(pgene)
@@ -1326,7 +1325,7 @@ generate_labelling_table <- function(tabn) {
                             .data[["n"]], " genes"))
 
     ## Sanity check that all factors are in summary
-    miss <- which(!(levels(tabn$cluster) %in% dat_labs$cluster))
+    miss <- which(!(levels(tabn[["cluster"]]) %in% dat_labs[["cluster"]]))
     if (length(miss) > 0) {
         temp <- cbind(cluster = miss, n = 0,
                         ftext = paste0("cluster ", miss, ", 0 genes"))
@@ -1346,5 +1345,5 @@ generate_labelling_table <- function(tabn) {
 #'     data.frame(cluster = c(1, 1, 2, 3, 2))
 #' )
 num_clusters <- function(tab) {
-    return(length(unique(tab$cluster)))
+    return(length(unique(tab[["cluster"]])))
 }
