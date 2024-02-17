@@ -15,6 +15,16 @@ make_mat_and_phenotype <- function(ngenes=1000, nsamples=10,
     return(list(mat = tab, pheno = phenotype_data))
 }
 
+cleanup_outdir <- function(out_dir, numer="red", denom="green") {
+    ## Unused. Output directory artefacts come from examples,
+    ## not tests.
+    out_dir2 <- file.path(out_dir, paste0(numer, "_vs_", denom))
+    if (dir.exists(out_dir2)) {
+        unlink(out_dir2, recursive = TRUE) ## rm -rf equivalent
+        message("Removed: ", out_dir2)
+    }
+}
+
 test_that("rnaseqhelper", {
     tmp <- make_mat_and_phenotype(ngenes = 1000, nsamples = 10)
     tab <- tmp[["mat"]]
@@ -169,6 +179,6 @@ test_that("num_clusters", {
         num_clusters(data.frame(
             cluster = c(1, 1, 2, 3, 2)
         )),
-        3
+        3L
     )
 })

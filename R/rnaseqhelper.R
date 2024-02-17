@@ -57,7 +57,6 @@
 #'     default.
 #' @return None.
 #' @examples
-#' with_options(bitmapType = "cairo") ## disable plotting to X11
 #' ngenes <- 1000
 #' nsamples <- 10
 #' tab <- matrix(as.integer(rnorm(ngenes * nsamples, 1000, 500)),
@@ -487,7 +486,6 @@ kmeans_heatmaps <- function(norms, trans, pheno,
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
-#' with_options(bitmapType='cairo') ## disable plotting to X11
 #' n <- 100
 #' norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' pheno <- data.frame(sample=paste0("S", 1:n),
@@ -507,7 +505,6 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
                                     prefix_title = "",
                                     width_in = 6, height_in = 6) {
     ## normalised counts should be in the correct sample order already
-    with_options(repr.plot.height = height_in, repr.plot.width = width_in)
     if (!dir.exists(out_dir)) dir.create(out_dir)
     if (is.null(genes[["highlight"]])) {
         top_genes <- head(names(sort(rowMeans(norm_counts),   ## If no genes
@@ -525,6 +522,8 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
     scale_mat <- t(scale(t(norm_counts)))
     scale_mat <- scale_mat[complete.cases(scale_mat), ] ## Remove 0s
 
+    with_options(list(repr.plot.height = height_in, repr.plot.width = width_in),
+    {
     cluster_assignments <- single_kmeans_heatmap(
         scale_mat, k, top_genes, prefix_title, top_title,
         out_dir, heatprefix, width_in, height_in)
@@ -546,6 +545,7 @@ heatmap_with_geneplots <- function(norm_counts, pheno_data, k,
             genes_of_interest = genes[["interest"]], out_dir
         )
     }
+    })
     return(list(clusters = cluster_assignments_scores, scaled = scale_mat))
 }
 
@@ -758,7 +758,6 @@ cluster_assignments <- function(hm_now_drawn, matobj) {
 #' @return A list of two components; clustered tables, and scaled
 #'     matrix.
 #' @examples
-#' with_options(bitmapType='cairo') ## disable plotting to X11
 #' n <- 100
 #' scale_mat <- matrix(rnorm(n**2, mean = 5), nrow = n)
 #' rownames(scale_mat) <- paste0("G", 1:n)
@@ -833,8 +832,7 @@ better_pheatmap <- function(ph) {
                             ]][["gp"]][["fill"]]
                         ph[["children"]][[hm]][["children"]][[rr
                             ]][["gp"]][["lwd"]] <- lwdd
-                    }
-                }
+                    }}
             } else {
                 if ("gp" %in% names(ph[["children"]][[hm]])) {
                     ## Check for rects with tabular data
@@ -844,13 +842,10 @@ better_pheatmap <- function(ph) {
                         ph[["children"]][[hm]][["gp"
                         ]][["col"]] <- ph[["children"]][[hm]][["gp"]][["fill"]]
                         ph[["children"]][[hm]][["gp"]][["lwd"]] <- lwdd
-                    }
-                }
-            }
+                    }}}
         }
         return(ph)
-    } else {
-        ## PHEATMAP
+    } else {        ## PHEATMAP
         grob_classes <- map(ph[["gtable"]][["grobs"]], class)
         idx_grob <- which( ## Extract the right grob
             map_lgl(grob_classes, function(cl) "gTree" %in% cl)
@@ -1026,7 +1021,6 @@ do_volcanos <- function(dsqres, top_genes_tohighlight, plot_title, outdir,
 volcano_plot <- function(dsqres, degenes, title,
                         curve = list(sd = 0.15, sc = 10, offset = 1),
                         curve_scale = 1, curve_show = FALSE, ylim = NULL) {
-    with_options(repr.plot.height = 12, repr.plot.width = 12)
     ## Extract relevant info from DESeq results
     ana <- dsqres %>% select(c(.data[["gene"]], .data[["log2FoldChange"]],
                                 .data[["padj"]])) %>%
@@ -1051,6 +1045,7 @@ volcano_plot <- function(dsqres, degenes, title,
                 cust_fun(.data[["log2FoldChange"]])))
 
     max_x <- max(abs(ana[["log2FoldChange"]])) + 0.05 ## symmetry
+    with_options(list(repr.plot.height = 12, repr.plot.width = 12), {
     plot1 <- red %>% ggplot(aes_string(
                         x = "log2FoldChange", y = "mLog10Padj",
                         colour = "highlight", shape = "isTopN",
@@ -1063,7 +1058,7 @@ volcano_plot <- function(dsqres, degenes, title,
                             filter(.data[["highlight"]]) %>%
                             head(15), box.padding = 0.5, max.overlaps = 30,
                         colour = "black") + ggtitle(title)
-
+    })
     if (curve_show) {
         plot1 <- plot1 + geom_function(fun = cfun, n = 100, colour = "blue")
     }

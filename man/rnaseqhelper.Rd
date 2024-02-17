@@ -54,7 +54,6 @@ analysis and perform a full analysis from a few starting
 parameters
 }
 \examples{
-with_options(bitmapType = "cairo") ## disable plotting to X11
 ngenes <- 1000
 nsamples <- 10
 tab <- matrix(as.integer(rnorm(ngenes * nsamples, 1000, 500)),

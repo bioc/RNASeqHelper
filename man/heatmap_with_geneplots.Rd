@@ -53,7 +53,6 @@ Generate a clustered heatmaps for a specific k means
 value.
 }
 \examples{
-with_options(bitmapType='cairo') ## disable plotting to X11
 n <- 100
 norm_counts <- matrix(rnorm(n**2, mean = 5), nrow = n)
 pheno <- data.frame(sample=paste0("S", 1:n),
@@ -62,7 +61,7 @@ pheno <- data.frame(sample=paste0("S", 1:n),
 rownames(norm_counts) <- paste0("G", 1:n)
 colnames(norm_counts) <- paste0("S", 1:n)
 genes <- list(highlight = paste0("G", 1:10),
-            interest = paste0("G", c(2,3)),
+            interest = paste0("G", c(2, 3)),
             score_thresh = c(0.2, 0.3))
 res <- heatmap_with_geneplots(norm_counts, pheno, 2,
                             genes, out_dir = tempdir())
